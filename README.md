@@ -7,6 +7,7 @@ A comprehensive parking management system for residential buildings.
 ### Backend Setup (On UBC Server)
 
 1. Change .env under backend folder
+- *MUST CHANGE TO YOUR ORACLE_USER & ORACLE_PASS*
 2. Upload the backend folder to the server
 3. SSH into the server:
 
@@ -14,13 +15,31 @@ A comprehensive parking management system for residential buildings.
 ssh yourCWL@remote.students.cs.ubc.ca
 ```
 
-2. Navigate to the project directory:
+4. Navigate to the project directory:
+
+```bash
+cd ~/backend
+```
+5. Login into SQLPlus
+
+```bash
+sqlplus ora_cwl@stu
+aYourStudentID
+```
+
+6. Initial SQL
+
+```bash
+@init.sql
+```
+
+7. Create new terminal and goto backend
 
 ```bash
 cd ~/backend
 ```
 
-3. Start the backend server:
+8. Start the backend server:
 
 ```bash
 sh ./remote-start.sh
@@ -41,7 +60,13 @@ cd frontend
 ```bash
 yarn install
 ```
+3. Change vite.config.js
 
+```bash
+proxy: {
+      '/api': {
+        target: 'http://localhost:50XXX', // change to your server port#
+```
 3. Open another terminal window and set up SSH tunnel:
 
 ```bash
