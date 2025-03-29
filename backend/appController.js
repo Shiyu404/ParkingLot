@@ -1,6 +1,6 @@
 const express = require('express');
 
-const appService = require('../appService');
+const appService = require('./appService');
 
 const router = express.Router();
 
@@ -66,5 +66,31 @@ router.get('/count-demotable', async (req, res) => {
     }
 });
 
+// get current occupancy in the parking lot
+router.get('/admin/occupancy', async (req, res) => {
+    try {
+        const result = await appService.fetchCurrentOccupancy(); // 建议直接在 appService 里写
+        res.status(200).json({
+            success: true,
+            ...result
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Failed to get occupancy data' });
+    }
+});
 
+// get the flagged vehicles
+router.get('/admin/violations', async (req, res) => {
+    try {
+        const result = await appService.fetchFlaggedVehicles();
+        res.status(200).json({
+            success: true,
+            vehicles: result
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Failed to get flagged vehicles' });
+    }
+});
 module.exports = router;

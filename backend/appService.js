@@ -142,11 +142,48 @@ async function countDemotable() {
     });
 }
 
+// get current occupancy in the parking lot
+async function fetchCurrentOccupancy() {
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(`
+            SELECT 
+                COUNT(*) AS occupiedSpaces,
+                (SELECT total_spaces FROM ParkingLot WHERE lot_id = 'A') AS totalSpaces
+            FROM ParkingRecord
+            WHERE exit_time IS NULL
+        `);
+        const row = result.rows[0];
+        return {
+            occupiedSpaces: row[0],
+            totalSpaces: row[1],
+            availableSpaces: row[1] - row[0]
+        };
+    }).catch(() => {
+        return { occupiedSpaces: 0, totalSpaces: 0, availableSpaces: 0 };
+    });
+}
+
+// get flagged vehicle
+async function fetchFlaggedVehicles() {
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(`
+            SELECT DISTINCT vehicle_plate
+            FROM Violation
+            WHERE resolved = 'N'
+        `);
+        return result.rows.map(row => row[0]);
+    }).catch(() => {
+        return [];
+    });
+}
+
 module.exports = {
     testOracleConnection,
     fetchDemotableFromDb,
     initiateDemotable, 
     insertDemotable, 
     updateNameDemotable, 
-    countDemotable
+    countDemotable,
+    fetchCurrentOccupancy,
+    fetchFlaggedVehicles
 };
