@@ -27,7 +27,7 @@ const Login = () => {
 
     const from = location.state?.from?.pathname || "/";
 
-    const [loginCredentials, setLoginCredentials] = useState({ email: '', password: '' });
+    const [loginCredentials, setLoginCredentials] = useState({ phone: '', password: '' });
 
     const [registrationData, setRegistrationData] = useState({
         name: '',
@@ -42,10 +42,10 @@ const Login = () => {
     const handleLogin = async (e) => {
         e.preventDefault();
 
-        if (!loginCredentials.email || !loginCredentials.password) {
+        if (!loginCredentials.phone || !loginCredentials.password) {
             toast({
                 title: "Login Failed",
-                description: "Please enter email and password",
+                description: "Please enter phone number and password",
                 variant: "destructive",
             });
             return;
@@ -59,16 +59,25 @@ const Login = () => {
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    email: loginCredentials.email,
+                    phone: loginCredentials.phone,
                     password: loginCredentials.password,
                 }),
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
             const data = await response.json();
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    toast({
+                        title: "Login Failed",
+                        description: "Invalid phone number or password",
+                        variant: "destructive",
+                    });
+                } else {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return;
+            }
 
             if (data.success) {
                 // Login successful
@@ -90,7 +99,7 @@ const Login = () => {
                 // Login failed
                 toast({
                     title: "Login Failed",
-                    description: data.message || "Invalid email or password",
+                    description: data.message || "Invalid phone number or password",
                     variant: "destructive",
                 });
             }
@@ -232,19 +241,20 @@ const Login = () => {
                             <TabsContent value="login">
                                 <form onSubmit={handleLogin} className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="email" className="flex items-center gap-2">
-                                            <Mail className="h-4 w-4" />
-                                            Email Address
+                                        <Label htmlFor="phone" className="flex items-center gap-2">
+                                            <Phone className="h-4 w-4" />
+                                            Phone Number
                                         </Label>
                                         <Input
-                                            id="email"
-                                            type="email"
-                                            placeholder="Enter your email address"
-                                            value={loginCredentials.email}
-                                            onChange={(e) => setLoginCredentials({...loginCredentials, email: e.target.value})}
+                                            id="phone"
+                                            type="tel"
+                                            placeholder="Enter your phone number"
+                                            value={loginCredentials.phone}
+                                            onChange={(e) => setLoginCredentials({...loginCredentials, phone: e.target.value})}
                                             required
                                         />
                                     </div>
+
                                     <div className="space-y-2">
                                         <Label htmlFor="password" className="flex items-center gap-2">
                                             <Key className="h-4 w-4" />
@@ -259,24 +269,18 @@ const Login = () => {
                                             required
                                         />
                                     </div>
-                                    <Button type="submit" className="w-full">Sign In</Button>
-                                </form>
 
-                                <div className="mt-4 text-center text-sm text-muted-foreground">
-                                    Test Accounts:
-                                    <div className="grid grid-cols-2 gap-2 mt-2">
-                                        <div className="text-left p-2 bg-primary/5 rounded text-xs">
-                                            <p className="font-medium">Administrator:</p>
-                                            <p>Email: admin@test.com</p>
-                                            <p>Password: password</p>
-                                        </div>
-                                        <div className="text-left p-2 bg-primary/5 rounded text-xs">
-                                            <p className="font-medium">Resident:</p>
-                                            <p>Email: resident@test.com</p>
-                                            <p>Password: password</p>
-                                        </div>
+                                    <div className="text-sm text-muted-foreground">
+                                        <p>Test Accounts:</p>
+                                        <p>Admin: 1234567890 / password</p>
+                                        <p>Resident: 9876543210 / password</p>
                                     </div>
-                                </div>
+
+                                    <Button type="submit" className="w-full">
+                                        <Key className="mr-2 h-4 w-4" />
+                                        Sign In
+                                    </Button>
+                                </form>
                             </TabsContent>
 
                             <TabsContent value="register">

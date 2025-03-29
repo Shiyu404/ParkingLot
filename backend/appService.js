@@ -100,11 +100,11 @@ async function testOracleConnection() {
 //     });
 // }
 
-async function loginUser(id, name) {
+async function loginUser(phone, password) {
     return await withOracleDB(async (connection) => {
         const result = await connection.execute(
-            `SELECT * FROM Users WHERE email = :email AND password = :password`,
-            { email, password },
+            `SELECT * FROM Users WHERE phone = :phone AND password = :password`,
+            { phone, password },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
         
@@ -114,9 +114,12 @@ async function loginUser(id, name) {
                 success: true,
                 user: {
                     id: user.ID,
-                    email: user.EMAIL,
+                    phone: user.PHONE,
                     name: user.NAME,
-                    role: user.ROLE
+                    role: user.ROLE,
+                    userType: user.USER_TYPE,
+                    unitNumber: user.UNIT_NUMBER,
+                    hostInformation: user.HOST_INFORMATION
                 }
             };
         }

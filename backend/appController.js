@@ -69,12 +69,12 @@ router.get('/count-demotable', async (req, res) => {
 // Login endpoint
 router.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        const result = await appService.loginUser(email, password);
+        const { phone, password } = req.body;
+        const result = await appService.loginUser(phone, password);
         if (result.success) {
             res.json(result);
         } else {
-            res.status(401).json({ success: false, message: 'Invalid email or password' });
+            res.status(401).json({ success: false, message: 'Invalid phone number or password' });
         }
     } catch (error) {
         console.error('Login error:', error);

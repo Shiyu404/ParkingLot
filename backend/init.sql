@@ -32,22 +32,24 @@ END;
 -- Create Users table
 CREATE TABLE Users (
     ID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    EMAIL VARCHAR2(100) UNIQUE NOT NULL,
+    PHONE VARCHAR2(20) UNIQUE NOT NULL,
     PASSWORD VARCHAR2(100) NOT NULL,
     NAME VARCHAR2(100) NOT NULL,
     ROLE VARCHAR2(20) NOT NULL,
-    UNIT_NUMBER VARCHAR2(20),
-    PHONE VARCHAR2(20),
+    USER_TYPE VARCHAR2(20) NOT NULL,
+    UNIT_NUMBER NUMBER,
+    HOST_INFORMATION VARCHAR2(200),
     CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_role CHECK (ROLE IN ('admin', 'resident', 'visitor'))
+    CONSTRAINT chk_role CHECK (ROLE IN ('admin', 'resident', 'visitor')),
+    CONSTRAINT chk_user_type CHECK (USER_TYPE IN ('resident', 'visitor'))
 );
 
 -- Insert test users
-INSERT INTO Users (EMAIL, PASSWORD, NAME, ROLE) VALUES
-('admin@test.com', 'password', 'Admin User', 'admin');
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE) VALUES
+('1234567890', 'password', 'Admin User', 'admin', 'resident');
 
-INSERT INTO Users (EMAIL, PASSWORD, NAME, ROLE) VALUES
-('resident@test.com', 'password', 'Resident User', 'resident');
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
+('9876543210', 'password', 'Resident User', 'resident', 'resident', 101);
 
 -- Create ParkingLot table
 CREATE TABLE ParkingLot (
