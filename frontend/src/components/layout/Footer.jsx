@@ -1,6 +1,6 @@
 /** @jsxImportSource react */
 import React from 'react';
-import { Car } from 'lucide-react';
+import { Car, Info, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
@@ -14,20 +14,13 @@ const Footer = () => {
           </div>
           
           <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8">
-            <Link to="/" className="text-sm text-gray-500 hover:text-primary transition-colors">
-              Home
+            <Link to="/about" className="flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
+              <Info className="mr-2 h-4 w-4" />
+              About Us
             </Link>
-            <Link to="/dashboard" className="text-sm text-gray-500 hover:text-primary transition-colors">
-              Dashboard
-            </Link>
-            <Link to="/visitors" className="text-sm text-gray-500 hover:text-primary transition-colors">
-              Visitors
-            </Link>
-            <Link to="/vehicles" className="text-sm text-gray-500 hover:text-primary transition-colors">
-              Vehicles
-            </Link>
-            <Link to="/violations" className="text-sm text-gray-500 hover:text-primary transition-colors">
-              Violations
+            <Link to="/contact" className="flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
+              <Mail className="mr-2 h-4 w-4" />
+              Contact Us
             </Link>
           </div>
         </div>

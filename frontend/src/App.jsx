@@ -17,6 +17,8 @@ import Vehicles from "./pages/Vehicles";
 import Violations from "./pages/Violations";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -30,15 +32,17 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
-                    <div className="flex flex-col min-h-screen">
+                    <div className="flex flex-col min-h-screen bg-background">
                         <Header />
-                        <main className="flex-grow">
+                        <main className="flex-grow w-full max-w-[1400px] mx-auto px-8 py-8">
                             <Routes>
                                 {/* Public routes */}
                                 <Route path="/" element={<Index />} />
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/visitor-request" element={<VisitorRequest />} />
                                 <Route path="/pay-ticket" element={<PayTicket />} />
+                                <Route path="/about" element={<About />} />
+                                <Route path="/contact" element={<Contact />} />
 
                                 {/* Protected routes for all authenticated users */}
                                 <Route
