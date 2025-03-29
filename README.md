@@ -67,13 +67,13 @@ proxy: {
       '/api': {
         target: 'http://localhost:50XXX', // change to your server port#
 ```
-3. Open another terminal window and set up SSH tunnel:
+4. Open another terminal window and set up SSH tunnel:
 
 ```bash
 sh ./scripts/mac/server-tunnel.sh
 ```
 
-4. Start the frontend development server:
+5. Start the frontend development server:
 
 ```bash
 yarn dev
@@ -84,7 +84,7 @@ When prompted:
 - Enter the remote port number (from step 3 of backend setup, e.g., 50020)
 - Enter your CWL username
 
-5. Keep both terminal windows open:
+6. Keep both terminal windows open:
 
 - One for the frontend server
 - One for the SSH tunnel
