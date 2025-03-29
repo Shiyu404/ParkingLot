@@ -4,9 +4,11 @@ A comprehensive parking management system for residential buildings.
 
 ## 🚀 Quick Start
 
-### Backend Setup (On School Server)
+### Backend Setup (On UBC Server)
 
-1. SSH into the school server:
+1. Change .env under backend folder
+2. Upload the backend folder to the server
+3. SSH into the server:
 
 ```bash
 ssh yourCWL@remote.students.cs.ubc.ca
@@ -15,7 +17,7 @@ ssh yourCWL@remote.students.cs.ubc.ca
 2. Navigate to the project directory:
 
 ```bash
-cd ~/project_c5i2r_j6l4t_z9y5k/backend
+cd ~/backend
 ```
 
 3. Start the backend server:
@@ -37,19 +39,19 @@ cd frontend
 2. Install dependencies:
 
 ```bash
-npm install
+yarn install
 ```
 
-3. Start the frontend development server:
-
-```bash
-npm run dev
-```
-
-4. Open another terminal window and set up SSH tunnel:
+3. Open another terminal window and set up SSH tunnel:
 
 ```bash
 sh ./scripts/mac/server-tunnel.sh
+```
+
+4. Start the frontend development server:
+
+```bash
+yarn dev
 ```
 
 When prompted:
@@ -121,7 +123,3 @@ This project is developed as part of **CPSC 304** at the **UBC**. The system imp
 ## License
 
 This project is developed for academic purposes and is not intended for commercial use.
-
----
-
-For any inquiries or contributions, please contact the team members listed above.
