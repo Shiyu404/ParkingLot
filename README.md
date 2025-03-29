@@ -1,43 +1,69 @@
-## Overview
+# Welcome to your Lovable project
 
-This project is developed as part of **CPSC 304** at the **UBC**. The system improves residential visitor parking management by tracking parking activities, enforcing regulations, and preventing misuse. It provides administrators with tools to monitor violations, manage payments, and take enforcement actions.
+## Project info
 
-## Features
+**URL**: https://lovable.dev/projects/d52a21e8-b558-4d1c-b6e0-3a2d493115f3
 
-- **Visitor Pass Management**: Residents can request visitor passes, track usage, and approve or deny requests.
-- **Real-Time Parking Monitoring**: Displays live parking lot occupancy, showing available and occupied spaces.
-- **Violation Enforcement**: Allows administrators to issue warnings, penalties, or escalate cases to towing services.
-- **Payment Processing**: Provides secure online payment options for fines and violations.
-- **Admin Dashboard**: Includes tools for managing visitor quotas, enforcement policies, and reviewing logs of issued passes and payments.
+## How can I edit this code?
 
-## Installation & Setup
+There are several ways of editing your application.
 
-1. **Clone the repository**:
-   ```sh
-   git clone <repository-url>
-   cd <project-folder>
-   ```
-2. **Install dependencies**:
-   ```sh
-   npm install
-   ```
-3. **Setup environment variables**:
-    - Configure `.env` file with necessary credentials.
-4. **Start the application**:
-   ```sh
-   npm start
-   ```
+**Use Lovable**
 
-## Team Members
+Simply visit the [Lovable Project](https://lovable.dev/projects/d52a21e8-b558-4d1c-b6e0-3a2d493115f3) and start prompting.
 
-- **Frank Yang**
-- **Xingyang Zheng**
-- **Shiyu Zhou**
+Changes made via Lovable will be committed automatically to this repo.
 
+**Use your preferred IDE**
 
-## License
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-This project is developed for academic purposes and is not intended for commercial use.
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
----
-For any inquiries or contributions, please contact the team members listed above.
+Follow these steps:
+
+```sh
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
+
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
+
+# Step 3: Install the necessary dependencies.
+npm i
+
+# Step 4: Start the development server with auto-reloading and an instant preview.
+npm run dev
+```
+
+**Edit a file directly in GitHub**
+
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
+
+**Use GitHub Codespaces**
+
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
+
+## What technologies are used for this project?
+
+This project is built with .
+
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
+
+## How can I deploy this project?
+
+Simply open [Lovable](https://lovable.dev/projects/d52a21e8-b558-4d1c-b6e0-3a2d493115f3) and click on Share -> Publish.
+
+## I want to use a custom domain - is that possible?
+
+We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)

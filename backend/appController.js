@@ -66,17 +66,30 @@ router.get('/count-demotable', async (req, res) => {
     }
 });
 
+// Login endpoint
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const result = await appService.loginUser(email, password);
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(401).json({ success: false, message: 'Invalid email or password' });
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // get current occupancy in the parking lot
 router.get('/admin/occupancy', async (req, res) => {
     try {
-        const result = await appService.fetchCurrentOccupancy(); // 建议直接在 appService 里写
-        res.status(200).json({
-            success: true,
-            ...result
-        });
+        const result = await appService.fetchCurrentOccupancy();
+        res.json(result);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: 'Failed to get occupancy data' });
+        res.status(500).json({ error: 'Failed to get occupancy data' });
     }
 });
 
@@ -84,13 +97,11 @@ router.get('/admin/occupancy', async (req, res) => {
 router.get('/admin/violations', async (req, res) => {
     try {
         const result = await appService.fetchFlaggedVehicles();
-        res.status(200).json({
-            success: true,
-            vehicles: result
-        });
+        res.json({ vehicles: result });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: 'Failed to get flagged vehicles' });
+        res.status(500).json({ error: 'Failed to get flagged vehicles' });
     }
 });
+
 module.exports = router;

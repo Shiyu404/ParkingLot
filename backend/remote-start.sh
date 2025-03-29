@@ -16,8 +16,7 @@ else
     exit 1
 fi
 
-
-# Configure the shared Node library on the undergrad server.
+# Configure the shared Node library on the undergrad server
 export NODE_PATH=/cs/local/generic/lib/cs304/node_modules
 
 # File path
@@ -28,27 +27,28 @@ sed -i "/^ORACLE_HOST=/c\ORACLE_HOST=dbhost.students.cs.ubc.ca" $ENV_SERVER_PATH
 sed -i "/^ORACLE_PORT=/c\ORACLE_PORT=1522" $ENV_SERVER_PATH
 
 # Define a range
-START=50000
-END=60000
+START=50020
+END=50030
+
+# Function to check if a port is in use
+check_port() {
+    local port=$1
+    if ! lsof -i :$port > /dev/null 2>&1; then
+        return 0  # Port is free
+    else
+        return 1  # Port is in use
+    fi
+}
 
 # Loop through the range and check if the port is in use
 for PORT in $(seq $START $END); do
-    # Check if the port is in use
-    if ! ss -tuln | grep :$PORT > /dev/null; then
-        # Bind to the port using a temporary process
-        nc -l -p $PORT &
-        TEMP_PID=$!
-
+    if check_port $PORT; then
         # Update the port number in the .env file
         sed -i "/^PORT=/c\PORT=$PORT" $ENV_SERVER_PATH
         echo "Updated $ENV_SERVER_PATH with PORT=$PORT."
-
-        # Kill the temporary process
-        kill $TEMP_PID
-
+        
         # Replace the bash process with the Node process
         exec node server.js
         break
     fi
 done
-

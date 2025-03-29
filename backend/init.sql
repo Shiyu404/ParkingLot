@@ -1,0 +1,76 @@
+-- Drop existing tables if they exist
+BEGIN
+   EXECUTE IMMEDIATE 'DROP TABLE ParkingRecord';
+EXCEPTION
+   WHEN OTHERS THEN
+      IF SQLCODE != -942 THEN
+         RAISE;
+      END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'DROP TABLE ParkingLot';
+EXCEPTION
+   WHEN OTHERS THEN
+      IF SQLCODE != -942 THEN
+         RAISE;
+      END IF;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'DROP TABLE Users';
+EXCEPTION
+   WHEN OTHERS THEN
+      IF SQLCODE != -942 THEN
+         RAISE;
+      END IF;
+END;
+/
+
+-- Create Users table
+CREATE TABLE Users (
+    ID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    EMAIL VARCHAR2(100) UNIQUE NOT NULL,
+    PASSWORD VARCHAR2(100) NOT NULL,
+    NAME VARCHAR2(100) NOT NULL,
+    ROLE VARCHAR2(20) NOT NULL,
+    UNIT_NUMBER VARCHAR2(20),
+    PHONE VARCHAR2(20),
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_role CHECK (ROLE IN ('admin', 'resident', 'visitor'))
+);
+
+-- Insert test users
+INSERT INTO Users (EMAIL, PASSWORD, NAME, ROLE) VALUES
+('admin@test.com', 'password', 'Admin User', 'admin');
+
+INSERT INTO Users (EMAIL, PASSWORD, NAME, ROLE) VALUES
+('resident@test.com', 'password', 'Resident User', 'resident');
+
+-- Create ParkingLot table
+CREATE TABLE ParkingLot (
+    LOT_ID VARCHAR2(1) PRIMARY KEY,
+    TOTAL_SPACES NUMBER NOT NULL,
+    AVAILABLE_SPACES NUMBER NOT NULL
+);
+
+-- Insert test parking lot
+INSERT INTO ParkingLot (LOT_ID, TOTAL_SPACES, AVAILABLE_SPACES) VALUES
+('A', 100, 100);
+
+-- Create ParkingRecord table
+CREATE TABLE ParkingRecord (
+    RECORD_ID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    VEHICLE_PLATE VARCHAR2(20) NOT NULL,
+    LOT_ID VARCHAR2(1),
+    ENTRY_TIME TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    EXIT_TIME TIMESTAMP,
+    STATUS VARCHAR2(20) DEFAULT 'active',
+    CONSTRAINT fk_lot_id FOREIGN KEY (LOT_ID) REFERENCES ParkingLot(LOT_ID),
+    CONSTRAINT chk_status CHECK (STATUS IN ('active', 'completed', 'violation'))
+);
+
+-- Commit the changes
+COMMIT; 

@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,25 +12,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, Users, Car, AlertTriangle } from 'lucide-react';
 
 const UserMenu = () => {
-  // 临时用户状态
-  const user = {
-    name: 'Test User',
-    role: 'admin',
-    unitNumber: 'A101'
-  };
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    // 临时登出逻辑
-    navigate('/');
+    logout();  // Call the logout function from AuthContext
+    navigate('/login');  // Redirect to login page
   };
 
   if (!user) {
-    return React.createElement(Button, {
-      variant: 'outline',
+    return React.createElement('div', {
+      className: 'text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer',
       onClick: () => navigate('/login')
     }, 'Login');
   }
@@ -55,6 +51,29 @@ const UserMenu = () => {
         return 'Visitor';
       default:
         return '';
+    }
+  };
+
+  // Get role-specific menu items
+  const getRoleSpecificItems = () => {
+    switch (user.role) {
+      case 'admin':
+        return [
+          { icon: LayoutDashboard, label: 'Dashboard', onClick: () => navigate('/dashboard') },
+          { icon: Users, label: 'Visitors', onClick: () => navigate('/visitors') },
+          { icon: Car, label: 'Vehicles', onClick: () => navigate('/vehicles') },
+          { icon: AlertTriangle, label: 'Violations', onClick: () => navigate('/violations') }
+        ];
+      case 'resident':
+        return [
+          { icon: LayoutDashboard, label: 'Dashboard', onClick: () => navigate('/resident-dashboard') }
+        ];
+      case 'visitor':
+        return [
+          { icon: LayoutDashboard, label: 'Dashboard', onClick: () => navigate('/visitor-dashboard') }
+        ];
+      default:
+        return [];
     }
   };
 
@@ -84,6 +103,17 @@ const UserMenu = () => {
           React.createElement('p', {
             className: 'text-xs leading-none text-muted-foreground'
           }, getRoleDisplay())
+        )
+      ),
+      React.createElement(DropdownMenuSeparator),
+      // Role-specific menu items
+      ...getRoleSpecificItems().map((item, index) => 
+        React.createElement(DropdownMenuItem, {
+          key: index,
+          onClick: item.onClick
+        },
+          React.createElement(item.icon, { className: 'mr-2 h-4 w-4' }),
+          React.createElement('span', null, item.label)
         )
       ),
       React.createElement(DropdownMenuSeparator),

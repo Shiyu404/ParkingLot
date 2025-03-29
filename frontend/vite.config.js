@@ -11,10 +11,18 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:55001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
   },
   plugins: [
     react({
-      include: "**/*.{jsx,tsx}",
+      include: "**/*.{jsx}",
       jsxRuntime: 'automatic',
       jsxImportSource: 'react',
       babel: {
@@ -33,7 +41,7 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
+    extensions: ['.js', '.jsx', '.json'],
   },
   esbuild: {
     jsx: 'automatic',
