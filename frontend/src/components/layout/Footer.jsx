@@ -1,4 +1,4 @@
-
+/** @jsxImportSource react */
 import React from 'react';
 import { Car } from 'lucide-react';
 import { Link } from 'react-router-dom';

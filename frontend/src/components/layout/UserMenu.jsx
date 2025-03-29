@@ -1,4 +1,4 @@
-
+/** @jsxImportSource react */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -12,23 +12,26 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LogOut, User } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 
 const UserMenu = () => {
-  const { user, logout } = useAuth();
+  // 临时用户状态
+  const user = {
+    name: 'Test User',
+    role: 'admin',
+    unitNumber: 'A101'
+  };
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout();
+    // 临时登出逻辑
     navigate('/');
   };
 
   if (!user) {
-    return (
-      <Button variant="outline" onClick={() => navigate('/login')}>
-        Login
-      </Button>
-    );
+    return React.createElement(Button, {
+      variant: 'outline',
+      onClick: () => navigate('/login')
+    }, 'Login');
   }
 
   // Get initials for avatar
@@ -55,38 +58,49 @@ const UserMenu = () => {
     }
   };
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary/10 text-primary">
-              {getInitials()}
-            </AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {getRoleDisplay()}
-            </p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate('/profile')}>
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+  return React.createElement(DropdownMenu, null,
+    React.createElement(DropdownMenuTrigger, { asChild: true },
+      React.createElement(Button, {
+        variant: 'ghost',
+        className: 'relative h-8 w-8 rounded-full'
+      },
+        React.createElement(Avatar, { className: 'h-8 w-8' },
+          React.createElement(AvatarFallback, {
+            className: 'bg-primary/10 text-primary'
+          }, getInitials())
+        )
+      )
+    ),
+    React.createElement(DropdownMenuContent, {
+      className: 'w-56',
+      align: 'end',
+      forceMount: true
+    },
+      React.createElement(DropdownMenuLabel, { className: 'font-normal' },
+        React.createElement('div', { className: 'flex flex-col space-y-1' },
+          React.createElement('p', {
+            className: 'text-sm font-medium leading-none'
+          }, user.name),
+          React.createElement('p', {
+            className: 'text-xs leading-none text-muted-foreground'
+          }, getRoleDisplay())
+        )
+      ),
+      React.createElement(DropdownMenuSeparator),
+      React.createElement(DropdownMenuItem, {
+        onClick: () => navigate('/profile')
+      },
+        React.createElement(User, { className: 'mr-2 h-4 w-4' }),
+        React.createElement('span', null, 'Profile')
+      ),
+      React.createElement(DropdownMenuSeparator),
+      React.createElement(DropdownMenuItem, {
+        onClick: handleLogout
+      },
+        React.createElement(LogOut, { className: 'mr-2 h-4 w-4' }),
+        React.createElement('span', null, 'Log out')
+      )
+    )
   );
 };
 
