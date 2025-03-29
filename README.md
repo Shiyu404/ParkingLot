@@ -1,0 +1,127 @@
+# Parking Management System
+
+A comprehensive parking management system for residential buildings.
+
+## 🚀 Quick Start
+
+### Backend Setup (On School Server)
+
+1. SSH into the school server:
+
+```bash
+ssh yourCWL@remote.students.cs.ubc.ca
+```
+
+2. Navigate to the project directory:
+
+```bash
+cd ~/project_c5i2r_j6l4t_z9y5k/backend
+```
+
+3. Start the backend server:
+
+```bash
+sh ./remote-start.sh
+```
+
+**Keep this terminal window open to maintain the server connection.**
+
+### Frontend Setup (On Local Machine)
+
+1. Open a new terminal window and navigate to the frontend directory:
+
+```bash
+cd frontend
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Start the frontend development server:
+
+```bash
+npm run dev
+```
+
+4. Open another terminal window and set up SSH tunnel:
+
+```bash
+sh ./scripts/mac/server-tunnel.sh
+```
+
+When prompted:
+
+- Enter the remote port number (from step 3 of backend setup, e.g., 50020)
+- Enter your CWL username
+
+5. Keep both terminal windows open:
+
+- One for the frontend server
+- One for the SSH tunnel
+
+### Access the Application
+
+1. Open your browser and navigate to:
+
+```
+http://localhost:8080
+```
+
+2. Use the test accounts to log in:
+
+- Administrator: admin@test.com / password
+- Resident: resident@test.com / password
+
+## Notes
+
+- Keep the SSH tunnel and backend server running while developing
+- The backend server runs on the school server
+- The frontend development server runs locally
+- All API requests are proxied through the SSH tunnel
+
+## Overview
+
+This project is developed as part of **CPSC 304** at the **UBC**. The system improves residential visitor parking management by tracking parking activities, enforcing regulations, and preventing misuse. It provides administrators with tools to monitor violations, manage payments, and take enforcement actions.
+
+## Features
+
+- **Visitor Pass Management**: Residents can request visitor passes, track usage, and approve or deny requests.
+- **Real-Time Parking Monitoring**: Displays live parking lot occupancy, showing available and occupied spaces.
+- **Violation Enforcement**: Allows administrators to issue warnings, penalties, or escalate cases to towing services.
+- **Payment Processing**: Provides secure online payment options for fines and violations.
+- **Admin Dashboard**: Includes tools for managing visitor quotas, enforcement policies, and reviewing logs of issued passes and payments.
+
+## Installation & Setup
+
+1. **Clone the repository**:
+   ```sh
+   git clone <repository-url>
+   cd <project-folder>
+   ```
+2. **Install dependencies**:
+   ```sh
+   npm install
+   ```
+3. **Setup environment variables**:
+   - Configure `.env` file with necessary credentials.
+4. **Start the application**:
+   ```sh
+   npm start
+   ```
+
+## Team Members
+
+- **Frank Yang**
+- **Xingyang Zheng**
+- **Shiyu Zhou**
+
+## License
+
+This project is developed for academic purposes and is not intended for commercial use.
+
+---
+
+For any inquiries or contributions, please contact the team members listed above.
