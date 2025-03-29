@@ -100,7 +100,7 @@ async function testOracleConnection() {
 //     });
 // }
 
-async function loginUser(email, password) {
+async function loginUser(id, name) {
     return await withOracleDB(async (connection) => {
         const result = await connection.execute(
             `SELECT * FROM Users WHERE email = :email AND password = :password`,

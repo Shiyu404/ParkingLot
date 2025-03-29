@@ -1,69 +1,127 @@
-# Welcome to your Lovable project
+# Parking Management System
 
-## Project info
+A comprehensive parking management system for residential buildings.
 
-**URL**: https://lovable.dev/projects/d52a21e8-b558-4d1c-b6e0-3a2d493115f3
+## 🚀 Quick Start
 
-## How can I edit this code?
+### Backend Setup (On School Server)
 
-There are several ways of editing your application.
+1. SSH into the school server:
 
-**Use Lovable**
+```bash
+ssh yourCWL@remote.students.cs.ubc.ca
+```
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d52a21e8-b558-4d1c-b6e0-3a2d493115f3) and start prompting.
+2. Navigate to the project directory:
 
-Changes made via Lovable will be committed automatically to this repo.
+```bash
+cd ~/project_c5i2r_j6l4t_z9y5k/backend
+```
 
-**Use your preferred IDE**
+3. Start the backend server:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```bash
+sh ./remote-start.sh
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+**Keep this terminal window open to maintain the server connection.**
 
-Follow these steps:
+### Frontend Setup (On Local Machine)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+1. Open a new terminal window and navigate to the frontend directory:
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+```bash
+cd frontend
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+2. Install dependencies:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
+```
+
+3. Start the frontend development server:
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+4. Open another terminal window and set up SSH tunnel:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+sh ./scripts/mac/server-tunnel.sh
+```
 
-**Use GitHub Codespaces**
+When prompted:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- Enter the remote port number (from step 3 of backend setup, e.g., 50020)
+- Enter your CWL username
 
-## What technologies are used for this project?
+5. Keep both terminal windows open:
 
-This project is built with .
+- One for the frontend server
+- One for the SSH tunnel
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Access the Application
 
-## How can I deploy this project?
+1. Open your browser and navigate to:
 
-Simply open [Lovable](https://lovable.dev/projects/d52a21e8-b558-4d1c-b6e0-3a2d493115f3) and click on Share -> Publish.
+```
+http://localhost:8080
+```
 
-## I want to use a custom domain - is that possible?
+2. Use the test accounts to log in:
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+- Administrator: admin@test.com / password
+- Resident: resident@test.com / password
+
+## Notes
+
+- Keep the SSH tunnel and backend server running while developing
+- The backend server runs on the school server
+- The frontend development server runs locally
+- All API requests are proxied through the SSH tunnel
+
+## Overview
+
+This project is developed as part of **CPSC 304** at the **UBC**. The system improves residential visitor parking management by tracking parking activities, enforcing regulations, and preventing misuse. It provides administrators with tools to monitor violations, manage payments, and take enforcement actions.
+
+## Features
+
+- **Visitor Pass Management**: Residents can request visitor passes, track usage, and approve or deny requests.
+- **Real-Time Parking Monitoring**: Displays live parking lot occupancy, showing available and occupied spaces.
+- **Violation Enforcement**: Allows administrators to issue warnings, penalties, or escalate cases to towing services.
+- **Payment Processing**: Provides secure online payment options for fines and violations.
+- **Admin Dashboard**: Includes tools for managing visitor quotas, enforcement policies, and reviewing logs of issued passes and payments.
+
+## Installation & Setup
+
+1. **Clone the repository**:
+   ```sh
+   git clone <repository-url>
+   cd <project-folder>
+   ```
+2. **Install dependencies**:
+   ```sh
+   npm install
+   ```
+3. **Setup environment variables**:
+   - Configure `.env` file with necessary credentials.
+4. **Start the application**:
+   ```sh
+   npm start
+   ```
+
+## Team Members
+
+- **Frank Yang**
+- **Xingyang Zheng**
+- **Shiyu Zhou**
+
+## License
+
+This project is developed for academic purposes and is not intended for commercial use.
+
+---
+
+For any inquiries or contributions, please contact the team members listed above.
