@@ -12,7 +12,6 @@ const Footer = () => {
             <Car className="h-6 w-6 text-primary" />
             <span className="ml-2 text-lg font-semibold">ParkWatch</span>
           </div>
-          
           <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8">
             <Link to="/about" className="flex items-center text-sm text-gray-500 hover:text-primary transition-colors">
               <Info className="mr-2 h-4 w-4" />
@@ -24,7 +23,6 @@ const Footer = () => {
             </Link>
           </div>
         </div>
-        
         <div className="mt-8 border-t border-gray-200 pt-8 text-center md:text-left">
           <p className="text-sm text-gray-500">
             &copy; {new Date().getFullYear()} ParkWatch. All rights reserved.

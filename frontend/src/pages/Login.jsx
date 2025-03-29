@@ -31,12 +31,12 @@ const Login = () => {
 
     const [registrationData, setRegistrationData] = useState({
         name: '',
-        email: '',
+        phone: '',
         password: '',
         confirmPassword: '',
-        parkingLotId: '',
+        userType: 'resident',
         unitNumber: '',
-        phone: '',
+        hostInformation: '',
     });
 
     const handleLogin = async (e) => {
@@ -107,20 +107,40 @@ const Login = () => {
     const handleRegister = async (e) => {
         e.preventDefault();
 
-        if (!registrationData.email || !registrationData.password || !registrationData.name ||
-            !registrationData.unitNumber || !registrationData.phone || !registrationData.parkingLotId) {
+        // Validate required fields
+        if (!registrationData.name || !registrationData.phone || !registrationData.password) {
             toast({
                 title: "Registration Failed",
-                description: "Please fill all required fields",
+                description: "Please fill in all required fields",
                 variant: "destructive",
             });
             return;
         }
 
+        // Validate password match
         if (registrationData.password !== registrationData.confirmPassword) {
             toast({
                 title: "Registration Failed",
                 description: "Passwords do not match",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        // Validate additional fields based on user type
+        if (registrationData.userType === 'resident' && !registrationData.unitNumber) {
+            toast({
+                title: "Registration Failed",
+                description: "Unit number is required for residents",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (registrationData.userType === 'visitor' && !registrationData.hostInformation) {
+            toast({
+                title: "Registration Failed",
+                description: "Host information is required for visitors",
                 variant: "destructive",
             });
             return;
@@ -132,30 +152,48 @@ const Login = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(registrationData),
+                body: JSON.stringify({
+                    name: registrationData.name,
+                    phone: registrationData.phone,
+                    password: registrationData.password,
+                    userType: registrationData.userType,
+                    ...(registrationData.userType === 'resident' && {
+                        unitNumber: parseInt(registrationData.unitNumber)
+                    }),
+                    ...(registrationData.userType === 'visitor' && {
+                        hostInformation: registrationData.hostInformation
+                    })
+                }),
             });
 
             const data = await response.json();
 
             if (response.ok) {
                 toast({
-                    title: "Registration Submitted",
-                    description: "Your registration has been submitted and is awaiting administrator approval.",
+                    title: "Registration Successful",
+                    description: "Your account has been created successfully",
                 });
 
+                // Reset form
                 setRegistrationData({
                     name: '',
-                    email: '',
+                    phone: '',
                     password: '',
                     confirmPassword: '',
-                    parkingLotId: '',
+                    userType: 'resident',
                     unitNumber: '',
-                    phone: '',
+                    hostInformation: '',
                 });
+
+                // Switch to login tab
+                const loginTab = document.querySelector('[value="login"]');
+                if (loginTab) {
+                    loginTab.click();
+                }
             } else {
                 toast({
                     title: "Registration Failed",
-                    description: data.message || "Registration failed. Please try again.",
+                    description: data.message || "Registration failed. Please try again",
                     variant: "destructive",
                 });
             }
@@ -258,66 +296,16 @@ const Login = () => {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="reg-email" className="flex items-center gap-2">
-                                            <Mail className="h-4 w-4" />
-                                            Email Address
-                                        </Label>
-                                        <Input
-                                            id="reg-email"
-                                            type="email"
-                                            placeholder="Enter your email address"
-                                            value={registrationData.email}
-                                            onChange={(e) => setRegistrationData({...registrationData, email: e.target.value})}
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
                                         <Label htmlFor="reg-phone" className="flex items-center gap-2">
                                             <Phone className="h-4 w-4" />
                                             Phone Number
                                         </Label>
                                         <Input
                                             id="reg-phone"
+                                            type="tel"
                                             placeholder="Enter your phone number"
                                             value={registrationData.phone}
                                             onChange={(e) => setRegistrationData({...registrationData, phone: e.target.value})}
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="parkingLotId" className="flex items-center gap-2">
-                                            <Car className="h-4 w-4" />
-                                            Parking Location
-                                        </Label>
-                                        <Select
-                                            onValueChange={(value) => setRegistrationData({...registrationData, parkingLotId: value})}
-                                            value={registrationData.parkingLotId}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select your parking location" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {parkingLots.map(lot => (
-                                                    <SelectItem key={lot.id} value={lot.id}>
-                                                        {lot.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="reg-unit" className="flex items-center gap-2">
-                                            <Home className="h-4 w-4" />
-                                            Unit Number
-                                        </Label>
-                                        <Input
-                                            id="reg-unit"
-                                            placeholder="Enter your unit number"
-                                            value={registrationData.unitNumber}
-                                            onChange={(e) => setRegistrationData({...registrationData, unitNumber: e.target.value})}
                                             required
                                         />
                                     </div>
@@ -330,7 +318,7 @@ const Login = () => {
                                         <Input
                                             id="reg-password"
                                             type="password"
-                                            placeholder="Create a password"
+                                            placeholder="Enter your password"
                                             value={registrationData.password}
                                             onChange={(e) => setRegistrationData({...registrationData, password: e.target.value})}
                                             required
@@ -352,9 +340,61 @@ const Login = () => {
                                         />
                                     </div>
 
+                                    <div className="space-y-2">
+                                        <Label htmlFor="userType" className="flex items-center gap-2">
+                                            <User className="h-4 w-4" />
+                                            User Type
+                                        </Label>
+                                        <Select
+                                            onValueChange={(value) => setRegistrationData({...registrationData, userType: value})}
+                                            value={registrationData.userType}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select user type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="resident">Resident</SelectItem>
+                                                <SelectItem value="visitor">Visitor</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {registrationData.userType === 'resident' && (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="reg-unit" className="flex items-center gap-2">
+                                                <Home className="h-4 w-4" />
+                                                Unit Number
+                                            </Label>
+                                            <Input
+                                                id="reg-unit"
+                                                type="number"
+                                                placeholder="Enter your unit number"
+                                                value={registrationData.unitNumber}
+                                                onChange={(e) => setRegistrationData({...registrationData, unitNumber: e.target.value})}
+                                                required
+                                            />
+                                        </div>
+                                    )}
+
+                                    {registrationData.userType === 'visitor' && (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="host-info" className="flex items-center gap-2">
+                                                <User className="h-4 w-4" />
+                                                Host Information
+                                            </Label>
+                                            <Input
+                                                id="host-info"
+                                                placeholder="Enter host information"
+                                                value={registrationData.hostInformation}
+                                                onChange={(e) => setRegistrationData({...registrationData, hostInformation: e.target.value})}
+                                                required
+                                            />
+                                        </div>
+                                    )}
+
                                     <Button type="submit" className="w-full">
                                         <UserPlus className="mr-2 h-4 w-4" />
-                                        Create Account
+                                        Register
                                     </Button>
                                 </form>
 
