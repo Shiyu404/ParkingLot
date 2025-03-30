@@ -11,7 +11,6 @@ API Endpoints Definition
       "userType": "resident" | "visitor",
       "unitNumber"?: number,       
       "hostInformation"?: string     
-
    }
 
 Response:
@@ -26,7 +25,7 @@ Endpoint: POST /auth/login
 Description: Authenticates a user and returns a JWT token.
 Request Body:
 {
-"username": "john_doe",
+"phone": string,
 "password": "secure_password"
 }
 
