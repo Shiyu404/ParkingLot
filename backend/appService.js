@@ -130,6 +130,20 @@ async function loginUser(phone, password) {
     });
 }
 
+async function registerUser(phone, password) {
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(
+            `INSERT INTO Users VALUES(:phone,:password)`,
+            { phone, password },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        return { success: true };
+    }).catch((error) => {
+        console.error('Register error:', error);
+        return { success: false };
+    });
+}
+
 // Get current occupancy in the parking lot
 async function fetchCurrentOccupancy() {
     let connection;

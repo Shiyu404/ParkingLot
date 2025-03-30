@@ -82,6 +82,23 @@ router.post('/login', async (req, res) => {
     }
 });
 
+//Register endpoint
+router.post('/users/register',async(req,res) => {
+    try{
+        const { phone, password } = req.body;
+        const result = await appService.registerUser(phone,password);
+        if (result.success) {
+                res.json(result);
+        } else {
+                res.status(400).json({ success: false, message: 'Invalid phone number or password' });
+    } catch (error) {
+        console.error('Reigister error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+    }
+});
+
+
 // get current occupancy in the parking lot
 router.get('/admin/occupancy', async (req, res) => {
     try {
