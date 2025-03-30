@@ -231,8 +231,30 @@ router.post('/violations', async (req, res) => {
     }
 });
 
-
-//
+// 6.1 create payment
+router.post('/payments', async (req, res) => {
+    try {
+        const { amount, paymentMethod, cardNumber, userId, lotId, ticketId } = req.body;
+        const result = await appService.createPayment(amount, paymentMethod, cardNumber, userId, lotId, ticketId);
+        res.status(201).json({
+            status: "success",
+            data: {
+                payId: result.payId,
+                amount: result.amount,
+                status: result.status
+            }
+        });
+    } catch (error) {
+        console.error('Create payment error:', error);
+        res.status(500).json({
+            status: "error",
+            error: {
+                code: "INTERNAL_ERROR",
+                message: "Failed to create payment"
+            }
+        });
+    }
+});
 
 
 

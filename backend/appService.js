@@ -364,6 +364,41 @@ async function createViolation(lotId, province, licensePlate, reason, time) {
     });
 }
 
+//6.1 create payment
+async function createPayment(amount, paymentMethod, cardNumber, userId, lotId, ticketId) {
+    const query = `
+        INSERT INTO Payments (AMOUNT, PAYMENT_METHOD, CARD_NUMBER, USER_ID, LOT_ID, TICKET_ID, STATUS)
+        VALUES (:1, :2, :3, :4, :5, :6, 'completed')
+        RETURNING PAY_ID INTO :7
+    `;
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(query, {
+            bindDefs: [
+                { dir: oracledb.BIND_IN, type: oracledb.NUMBER, val: amount },
+                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: paymentMethod },
+                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: cardNumber },
+                { dir: oracledb.BIND_IN, type: oracledb.NUMBER, val: userId },
+                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: lotId },
+                { dir: oracledb.BIND_IN, type: oracledb.NUMBER, val: ticketId },
+                { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+            ]
+        });
+        
+        if (ticketId) {
+            await connection.execute(
+                `UPDATE Violations SET STATUS = 'paid' WHERE TICKET_ID = :1`,
+                [ticketId]
+            );
+        }
+        
+        return {
+            payId: result.outBinds[0],
+            amount,
+            status: 'completed'
+        };
+    });
+}
+
 
 module.exports = {
     testOracleConnection,
@@ -374,5 +409,6 @@ module.exports = {
     getAllParkingLots,
     getParkingLotById,
     getUserViolations,
-    createViolation
+    createViolation,
+    createPayment
 };
