@@ -130,14 +130,31 @@ async function loginUser(phone, password) {
     });
 }
 
-async function registerUser(phone, password) {
+async function registerUser(name,phone,password,userType,unitNumber,hostInformation,role) {
     return await withOracleDB(async (connection) => {
         const result = await connection.execute(
-            `INSERT INTO Users VALUES(:phone,:password)`,
-            { phone, password },
+            `INSERT INTO Users(NAME,PHONE,PASSWORD,USER_TYPE,UNIT_NUMBER,HOST_INFORMATION,ROLE)
+             VALUES(:name,:phone,:password,:userType,:unitNumber,:hostInformation,:role)`,
+             {
+                name,
+                phone,
+                password,
+                userType,
+                unitNumber,
+                hostInformation,  
+                role
+            },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-        return { success: true };
+        const user = result.rows[0];
+            return {
+                success: true,
+                user: {
+                    id: user.ID,
+                    name: user.NAME,
+                    userType: user.USER_TYPE
+                }
+            };
     }).catch((error) => {
         console.error('Register error:', error);
         return { success: false };
@@ -205,5 +222,6 @@ module.exports = {
     testOracleConnection,
     fetchCurrentOccupancy,
     fetchFlaggedVehicles,
-    loginUser
+    loginUser,
+    registerUser
 };

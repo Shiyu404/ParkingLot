@@ -69,7 +69,7 @@ router.get('/count-demotable', async (req, res) => {
 // Login endpoint
 router.post('/login', async (req, res) => {
     try {
-        const { phone, password } = req.body;
+        const { phone,password } = req.body;
         const result = await appService.loginUser(phone, password);
         if (result.success) {
             res.json(result);
@@ -85,17 +85,26 @@ router.post('/login', async (req, res) => {
 //Register endpoint
 router.post('/users/register',async(req,res) => {
     try{
-        const { phone, password } = req.body;
-        const result = await appService.registerUser(phone,password);
+        // if (!['resident', 'visitor'].includes(userType)) {
+        //     return res.status(400).json({ success: false, message: 'Invalid userType' });
+        // }
+        // if (userType === 'resident' && !unitNumber) {
+        //     return res.status(400).json({ success: false, message: 'Unit number is required for residents' });
+        // }
+        // if (userType === 'visitor' && !hostInformation) {
+        //     return res.status(400).json({ success: false, message: 'Host information is required for visitors' });
+        // }
+        const { name,phone,password,userType,unitNumber,hostInformation,role = 'user'} = req.body;
+        const result = await appService.registerUser(name,phone,password,userType,unitNumber,hostInformation,role);
         if (result.success) {
                 res.json(result);
         } else {
                 res.status(400).json({ success: false, message: 'Invalid phone number or password' });
-    } catch (error) {
+    }} catch (error) {
         console.error('Reigister error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
-    }
+    
 });
 
 

@@ -41,7 +41,7 @@ CREATE TABLE Users (
     UNIT_NUMBER NUMBER,
     HOST_INFORMATION VARCHAR2(200),
     CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_role CHECK (ROLE IN ('admin', 'resident', 'visitor')),
+    CONSTRAINT chk_role CHECK (ROLE IN ('admin', 'user')),
     CONSTRAINT chk_user_type CHECK (USER_TYPE IN ('resident', 'visitor'))
 );
 
@@ -50,7 +50,7 @@ INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE) VALUES
 ('1234567890', 'password', 'Admin User', 'admin', 'resident');
 
 INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
-('9876543210', 'password', 'Resident User', 'resident', 'resident', 101);
+('9876543210', 'password', 'Resident User', 'user', 'resident', 101);
 
 -- Create ParkingLot table
 CREATE TABLE ParkingLot (
