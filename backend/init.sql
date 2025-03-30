@@ -45,26 +45,12 @@ CREATE TABLE Users (
     CONSTRAINT chk_user_type CHECK (USER_TYPE IN ('resident', 'visitor'))
 );
 
--- Insert test users
-INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE) VALUES
-('1234567890', 'password', 'Admin User', 'admin', 'resident');
-
-INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
-('9876543210', 'password', 'Resident User', 'user', 'resident', 101);
-
--- INSERT INTO Users(NAME,PHONE,PASSWORD,USER_TYPE,UNIT_NUMBER,HOST_INFORMATION,ROLE)
---              VALUES('hello','1111111111','password','resident',100,'s','user');
-
 -- Create ParkingLot table
 CREATE TABLE ParkingLot (
     LOT_ID VARCHAR2(1) PRIMARY KEY,
     TOTAL_SPACES NUMBER NOT NULL,
     AVAILABLE_SPACES NUMBER NOT NULL
 );
-
--- Insert test parking lot
-INSERT INTO ParkingLot (LOT_ID, TOTAL_SPACES, AVAILABLE_SPACES) VALUES
-('A', 100, 100);
 
 -- Create ParkingRecord table
 CREATE TABLE ParkingRecord (
@@ -77,7 +63,6 @@ CREATE TABLE ParkingRecord (
     CONSTRAINT fk_lot_id FOREIGN KEY (LOT_ID) REFERENCES ParkingLot(LOT_ID),
     CONSTRAINT chk_status CHECK (STATUS IN ('active', 'completed', 'violation'))
 );
-
 
 -- Create Vehicles table
 CREATE TABLE Vehicles (
@@ -145,9 +130,4 @@ CREATE TABLE Staff (
     CONSTRAINT fk_staff_lot_id FOREIGN KEY (LOT_ID) REFERENCES ParkingLot(LOT_ID)
 );
 
--- Insert test staff
-INSERT INTO Staff (USER_ID, LOT_ID) 
-SELECT ID, 'A' FROM Users WHERE ROLE = 'admin';
-
--- Commit the changes
 COMMIT; 

@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Car, Users, AlertTriangle, Ticket, ArrowUpRight, ArrowDownRight, MapPin, Search, FileText } from 'lucide-react';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import OccupancyChart from '@/components/dashboard/OccupancyChart';
@@ -13,14 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
-
-// Mock parking lots
-const parkingLots = [
-    { id: '1', name: 'North Tower Parking', totalSpaces: 150, availableSpaces: 45 },
-    { id: '2', name: 'South Tower Parking', totalSpaces: 120, availableSpaces: 32 },
-    { id: '3', name: 'East Tower Parking', totalSpaces: 80, availableSpaces: 18 },
-    { id: '4', name: 'West Tower Parking', totalSpaces: 100, availableSpaces: 27 },
-];
+import { API_ENDPOINTS } from '@/config';
 
 // North American regions
 const northAmericanRegions = [
@@ -35,13 +27,114 @@ const northAmericanRegions = [
 
 const Dashboard = () => {
     const { toast } = useToast();
-    const [selectedParkingLot, setSelectedParkingLot] = useState(parkingLots[0].id);
+    const [parkingLots, setParkingLots] = useState([]);
+    const [selectedParkingLot, setSelectedParkingLot] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [plateToCheck, setPlateToCheck] = useState('');
     const [plateRegion, setPlateRegion] = useState('');
     const [plateCheckResult, setPlateCheckResult] = useState(null);
     const [ticketReason, setTicketReason] = useState('No Valid Visitor Pass');
 
-    const activeParkingLot = parkingLots.find(lot => lot.id === selectedParkingLot) || parkingLots[0];
+    // Fetch all parking lots
+    useEffect(() => {
+        const fetchParkingLots = async () => {
+            try {
+                const response = await fetch(API_ENDPOINTS.parkingLots);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch parking lots');
+                }
+                const data = await response.json();
+                setParkingLots(data.data.parkingLots);
+                if (data.data.parkingLots.length > 0) {
+                    setSelectedParkingLot(data.data.parkingLots[0].lotId);
+                }
+            } catch (error) {
+                console.error('Error fetching parking lots:', error);
+                toast({
+                    title: "Error",
+                    description: "Failed to load parking lots",
+                    variant: "destructive",
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchParkingLots();
+    }, [toast]);
+
+    // Fetch specific parking lot data
+    const [activeParkingLot, setActiveParkingLot] = useState(null);
+    
+    useEffect(() => {
+        const fetchParkingLotDetails = async () => {
+            if (!selectedParkingLot) return;
+            
+            try {
+                const response = await fetch(API_ENDPOINTS.parkingLotById(selectedParkingLot));
+                if (!response.ok) {
+                    throw new Error('Failed to fetch parking lot details');
+                }
+                const data = await response.json();
+                setActiveParkingLot(data.data);
+            } catch (error) {
+                console.error('Error fetching parking lot details:', error);
+                toast({
+                    title: "Error",
+                    description: "Failed to load parking lot details",
+                    variant: "destructive",
+                });
+            }
+        };
+
+        fetchParkingLotDetails();
+    }, [selectedParkingLot, toast]);
+
+    const handleParkingLotChange = (value) => {
+        setSelectedParkingLot(value);
+        const selectedLot = parkingLots.find(lot => lot.lotId === value);
+        if (selectedLot) {
+            toast({
+                title: "Parking Lot Changed",
+                description: `Switched to Lot ${selectedLot.lotId}`,
+            });
+        }
+    };
+
+    const stats = activeParkingLot ? [
+        {
+            title: 'Total Spaces',
+            value: activeParkingLot.capacity.toString(),
+            change: '+0',
+            isIncrease: true,
+            icon: <Car className="h-5 w-5" />,
+            progress: Math.round((activeParkingLot.capacity - activeParkingLot.currentRemain) / activeParkingLot.capacity * 100)
+        },
+        {
+            title: 'Available Spaces',
+            value: activeParkingLot.currentRemain.toString(),
+            change: '-3',
+            isIncrease: false,
+            icon: <MapPin className="h-5 w-5" />,
+            progress: Math.round(activeParkingLot.currentRemain / activeParkingLot.capacity * 100)
+        },
+        {
+            title: 'Current Vehicles',
+            value: activeParkingLot.currentVehicles.toString(),
+            change: '+2',
+            isIncrease: true,
+            icon: <Car className="h-5 w-5" />,
+            progress: Math.round(activeParkingLot.currentVehicles / activeParkingLot.capacity * 100)
+        },
+        {
+            title: 'Occupancy Rate',
+            value: `${Math.round(activeParkingLot.currentOccupancy / activeParkingLot.capacity * 100)}%`,
+            change: '+5%',
+            isIncrease: true,
+            icon: <AlertTriangle className="h-5 w-5" />,
+            progress: Math.round(activeParkingLot.currentOccupancy / activeParkingLot.capacity * 100)
+        },
+    ] : [];
 
     const container = {
         hidden: { opacity: 0 },
@@ -58,41 +151,6 @@ const Dashboard = () => {
         show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
     };
 
-    const stats = [
-        {
-            title: 'Total Spaces',
-            value: activeParkingLot.totalSpaces.toString(),
-            change: '+0',
-            isIncrease: true,
-            icon: <Car className="h-5 w-5" />,
-            progress: Math.round((activeParkingLot.totalSpaces - activeParkingLot.availableSpaces) / activeParkingLot.totalSpaces * 100)
-        },
-        {
-            title: 'Available Spaces',
-            value: activeParkingLot.availableSpaces.toString(),
-            change: '-3',
-            isIncrease: false,
-            icon: <MapPin className="h-5 w-5" />,
-            progress: Math.round(activeParkingLot.availableSpaces / activeParkingLot.totalSpaces * 100)
-        },
-        {
-            title: 'Active Visitor Passes',
-            value: '28',
-            change: '+2',
-            isIncrease: true,
-            icon: <Ticket className="h-5 w-5" />,
-            progress: 35
-        },
-        {
-            title: 'Open Violations',
-            value: '12',
-            change: '-1',
-            isIncrease: false,
-            icon: <AlertTriangle className="h-5 w-5" />,
-            progress: 15
-        },
-    ];
-
     const recentActivity = [
         { id: 1, type: 'Visitor Pass', description: 'New pass for John Smith', time: '10 minutes ago', status: 'success' },
         { id: 2, type: 'Violation', description: 'Unauthorized vehicle in spot A12', time: '25 minutes ago', status: 'warning' },
@@ -107,15 +165,6 @@ const Dashboard = () => {
         { licensePlate: 'GHI789', unitNumber: '310', visitorName: 'Mike Brown', passType: 'Weekend', remaining: '1d 4h' },
         { licensePlate: 'JKL012', unitNumber: '422', visitorName: 'Emma Wilson', passType: '8 hour', remaining: '2h 45m' },
     ];
-
-    const handleParkingLotChange = (value) => {
-        setSelectedParkingLot(value);
-        // In a real app, this would fetch data for the selected parking lot
-        toast({
-            title: "Parking Lot Changed",
-            description: `Switched to ${parkingLots.find(lot => lot.id === value)?.name}`,
-        });
-    };
 
     const checkLicensePlate = () => {
         if (!plateToCheck || !plateRegion) {
@@ -413,19 +462,25 @@ const Dashboard = () => {
                 </div>
 
                 <div className="mt-4 md:mt-0 w-full md:w-64">
-                    <Select
-                        value={selectedParkingLot}
-                        onValueChange={handleParkingLotChange}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select parking lot" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {parkingLots.map(lot => (
-                                <SelectItem key={lot.id} value={lot.id}>{lot.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    {isLoading ? (
+                        <div className="animate-pulse bg-gray-200 h-10 rounded-md"></div>
+                    ) : (
+                        <Select
+                            value={selectedParkingLot}
+                            onValueChange={handleParkingLotChange}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select parking lot" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {parkingLots.map(lot => (
+                                    <SelectItem key={lot.lotId} value={lot.lotId}>
+                                        Lot {lot.lotId} ({lot.currentRemain}/{lot.capacity} spaces)
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
                 </div>
             </div>
 
@@ -435,28 +490,19 @@ const Dashboard = () => {
                 initial="hidden"
                 animate="show"
             >
-                {stats.map((stat, index) => (
-                    <motion.div key={index} variants={item}>
-                        <DashboardCard
-                            title={stat.title}
-                            icon={stat.icon}
-                            className={stat.title === 'Open Violations' ? 'border-orange-200' : ''}
-                        >
-                            <div className="flex items-end justify-between mb-2">
-                                <span className="text-3xl font-bold">{stat.value}</span>
-                                <span className={`flex items-center text-sm ${stat.isIncrease ? 'text-green-500' : 'text-red-500'}`}>
-                  {stat.isIncrease ? (
-                      <ArrowUpRight className="h-4 w-4 mr-1" />
-                  ) : (
-                      <ArrowDownRight className="h-4 w-4 mr-1" />
-                  )}
-                                    {stat.change}
-                </span>
-                            </div>
-                            <Progress value={stat.progress} className="h-2" />
-                        </DashboardCard>
-                    </motion.div>
-                ))}
+                {isLoading ? (
+                    Array(4).fill(0).map((_, i) => (
+                        <div key={i} className="animate-pulse">
+                            <div className="bg-gray-200 h-32 rounded-lg"></div>
+                        </div>
+                    ))
+                ) : (
+                    stats.map((stat, index) => (
+                        <motion.div key={stat.title} variants={item}>
+                            <DashboardCard {...stat} />
+                        </motion.div>
+                    ))
+                )}
             </motion.div>
 
             {renderLicensePlateVerification()}
