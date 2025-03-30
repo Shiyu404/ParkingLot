@@ -399,6 +399,47 @@ async function createPayment(amount, paymentMethod, cardNumber, userId, lotId, t
     });
 }
 
+//6.2 get payment history
+async function getUserPayments(userId, startDate, endDate) {
+    let query = `
+        SELECT 
+            p.PAY_ID as payId,
+            p.AMOUNT,
+            p.PAYMENT_METHOD,
+            p.CARD_NUMBER,
+            p.LOT_ID as lotId,
+            p.CREATED_AT as createdAt,
+            p.STATUS
+        FROM Payments p
+        WHERE p.USER_ID = :1
+    `;
+    const params = [userId];
+    
+    if (startDate) {
+        query += ` AND p.CREATED_AT >= :${params.length + 1}`;
+        params.push(startDate);
+    }
+    if (endDate) {
+        query += ` AND p.CREATED_AT <= :${params.length + 1}`;
+        params.push(endDate);
+    }
+    
+    query += ` ORDER BY p.CREATED_AT DESC`;
+    
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(query, params);
+        return result.rows.map(row => ({
+            payId: row[0],
+            amount: row[1],
+            paymentMethod: row[2],
+            cardNumber: row[3],
+            lotId: row[4],
+            createdAt: row[5],
+            status: row[6]
+        }));
+    });
+}
+
 
 module.exports = {
     testOracleConnection,
@@ -410,5 +451,6 @@ module.exports = {
     getParkingLotById,
     getUserViolations,
     createViolation,
-    createPayment
+    createPayment,
+    getUserPayments,
 };

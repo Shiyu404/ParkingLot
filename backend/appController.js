@@ -256,7 +256,29 @@ router.post('/payments', async (req, res) => {
     }
 });
 
-
+//6.2 get payment history
+router.get('/payments/user/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { startDate, endDate } = req.query;
+        const result = await appService.getUserPayments(userId, startDate, endDate);
+        res.json({
+            status: "success",
+            data: {
+                payments: result
+            }
+        });
+    } catch (error) {
+        console.error('Get payments error:', error);
+        res.status(500).json({
+            status: "error",
+            error: {
+                code: "INTERNAL_ERROR",
+                message: "Failed to get payments"
+            }
+        });
+    }
+});
 
 
 
