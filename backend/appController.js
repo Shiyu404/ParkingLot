@@ -1,8 +1,5 @@
 const express = require('express');
 const { pool } = require('./db/index');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-
 const appService = require('./appService');
 
 const router = express.Router();
@@ -86,7 +83,7 @@ router.get('/count-demotable', async (req, res) => {
 router.post('/login', async (req, res) => {
     setCorsHeaders(res);
     try {
-        const { phone,password } = req.body;
+        const { phone, password } = req.body;
         const result = await appService.loginUser(phone, password);
         if (result.success) {
             res.json(result);
@@ -100,17 +97,18 @@ router.post('/login', async (req, res) => {
 });
 
 //Register endpoint
-router.post('/users/register',async(req,res) => {
+router.post('/users/register', async(req, res) => {
     setCorsHeaders(res);
-    try{
-        const { name,phone,password,userType,unitNumber,hostInformation,role = 'user'} = req.body;
-        const result = await appService.registerUser(name,phone,password,userType,unitNumber,hostInformation,role);
+    try {
+        const { name, phone, password, userType, unitNumber, hostInformation, role = 'user' } = req.body;
+        const result = await appService.registerUser(name, phone, password, userType, unitNumber, hostInformation, role);
         if (result.success) {
-                res.json(result);
+            res.json(result);
         } else {
-                res.status(400).json({ success: false, message: result.message});
-    }} catch (error) {
-        console.error('Reigister error:', error);
+            res.status(400).json({ success: false, message: result.message });
+        }
+    } catch (error) {
+        console.error('Register error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
