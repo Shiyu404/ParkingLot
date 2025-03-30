@@ -52,6 +52,9 @@ INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE) VALUES
 INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
 ('9876543210', 'password', 'Resident User', 'user', 'resident', 101);
 
+-- INSERT INTO Users(NAME,PHONE,PASSWORD,USER_TYPE,UNIT_NUMBER,HOST_INFORMATION,ROLE)
+--              VALUES('hello','1111111111','password','resident',100,'s','user');
+
 -- Create ParkingLot table
 CREATE TABLE ParkingLot (
     LOT_ID VARCHAR2(1) PRIMARY KEY,

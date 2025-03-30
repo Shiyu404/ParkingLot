@@ -146,18 +146,37 @@ async function registerUser(name,phone,password,userType,unitNumber,hostInformat
             },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-        const user = result.rows[0];
+        if (result.rowsAffected === 0) {
+            return { success: false, message: 'User not inserted' };
+        }
+        const result1 = await connection.execute(
+            `SELECT * FROM Users WHERE phone = :phone AND password = :password`,
+            { phone, password },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        
+        if (result1.rows.length > 0) {
+            const user = result1.rows[0];
             return {
                 success: true,
                 user: {
                     id: user.ID,
+                    phone: user.PHONE,
                     name: user.NAME,
-                    userType: user.USER_TYPE
+                    role: user.ROLE,
+                    userType: user.USER_TYPE,
+                    unitNumber: user.UNIT_NUMBER,
+                    hostInformation: user.HOST_INFORMATION
                 }
             };
-    }).catch((error) => {
-        console.error('Register error:', error);
+        }
         return { success: false };
+    }).catch((error) => {
+        if (error.code === 'ORA-00001') {
+            console.error('Phone number must be unique', error);
+        } else 
+            console.error('Register error:', error);
+        return { success: false,message: 'Phone number must be unique'};
     });
 }
 

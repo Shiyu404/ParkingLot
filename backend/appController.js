@@ -95,11 +95,12 @@ router.post('/users/register',async(req,res) => {
         //     return res.status(400).json({ success: false, message: 'Host information is required for visitors' });
         // }
         const { name,phone,password,userType,unitNumber,hostInformation,role = 'user'} = req.body;
+        //console.log('Role:', role);
         const result = await appService.registerUser(name,phone,password,userType,unitNumber,hostInformation,role);
         if (result.success) {
                 res.json(result);
         } else {
-                res.status(400).json({ success: false, message: 'Invalid phone number or password' });
+                res.status(400).json({ success: false, message: result.message});
     }} catch (error) {
         console.error('Reigister error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
