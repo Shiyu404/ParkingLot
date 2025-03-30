@@ -238,10 +238,37 @@ async function fetchFlaggedVehicles() {
     }
 }
 
+// 4.1 get information of all parking lots
+async function getAllParkingLots() {
+    const query = `
+        SELECT 
+            p.LOT_ID as lotId,
+            p.TOTAL_SPACES as capacity,
+            p.AVAILABLE_SPACES as currentRemain,
+            (p.TOTAL_SPACES - p.AVAILABLE_SPACES) as currentOccupancy,
+            COUNT(DISTINCT v.VEHICLE_ID) as currentVehicles
+        FROM ParkingLot p
+        LEFT JOIN Vehicles v ON v.CURRENT_LOT_ID = p.LOT_ID
+        GROUP BY p.LOT_ID, p.TOTAL_SPACES, p.AVAILABLE_SPACES
+        ORDER BY p.LOT_ID
+    `;
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(query);
+        return result.rows.map(row => ({
+            lotId: row[0],
+            capacity: row[1],
+            currentOccupancy: row[2],
+            currentRemain: row[3],
+            currentVehicles: row[4]
+        }));
+    });
+}
+
 module.exports = {
     testOracleConnection,
     fetchCurrentOccupancy,
     fetchFlaggedVehicles,
     loginUser,
-    registerUser
+    registerUser,
+    getAllParkingLots
 };

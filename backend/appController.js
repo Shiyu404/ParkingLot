@@ -131,4 +131,27 @@ router.get('/admin/violations', async (req, res) => {
     }
 });
 
+// 4.1 get information of all parking lots
+router.get('/parking-lots', async (req, res) => {
+    try {
+        const result = await appService.getAllParkingLots();
+        res.json({
+            status: "success",
+            data: {
+                parkingLots: result
+            }
+        });
+    } catch (error) {
+        console.error('Get parking lots error:', error);
+        res.status(500).json({
+            status: "error",
+            error: {
+                code: "INTERNAL_ERROR",
+                message: "Failed to get parking lots"
+            }
+        });
+    }
+});
+
+
 module.exports = router;
