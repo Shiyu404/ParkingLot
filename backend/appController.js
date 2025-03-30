@@ -153,5 +153,37 @@ router.get('/parking-lots', async (req, res) => {
     }
 });
 
+// 4.2 get info of specific parking lot
+router.get('/parking-lots/:lotId', async (req, res) => {
+    try {
+        const { lotId } = req.params;
+        const result = await appService.getParkingLotById(lotId);
+        if (result) {
+            res.json({
+                status: "success",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                status: "error",
+                error: {
+                    code: "NOT_FOUND",
+                    message: "Parking lot not found"
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Get parking lot error:', error);
+        res.status(500).json({
+            status: "error",
+            error: {
+                code: "INTERNAL_ERROR",
+                message: "Failed to get parking lot"
+            }
+        });
+    }
+});
+
+
 
 module.exports = router;

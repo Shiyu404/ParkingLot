@@ -264,11 +264,51 @@ async function getAllParkingLots() {
     });
 }
 
+// 4.2 get info of specific parking lot
+async function getParkingLotById(lotId) {
+    const query = `
+        SELECT 
+            p.LOT_ID as lotId,
+            p.TOTAL_SPACES as capacity,
+            p.AVAILABLE_SPACES as currentRemain,
+            (p.TOTAL_SPACES - p.AVAILABLE_SPACES) as currentOccupancy,
+            v.PROVINCE,
+            v.LICENSE_PLATE,
+            v.PARKING_UNTIL
+        FROM ParkingLot p
+        LEFT JOIN Vehicles v ON v.CURRENT_LOT_ID = p.LOT_ID
+        WHERE p.LOT_ID = :1
+    `;
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(query, [lotId]);
+        if (result.rows.length === 0) return null;
+        
+        const lot = {
+            lotId: result.rows[0][0],
+            capacity: result.rows[0][1],
+            currentOccupancy: result.rows[0][2],
+            currentRemain: result.rows[0][3],
+            vehicles: result.rows
+                .filter(row => row[4] && row[5] && row[6])
+                .map(row => ({
+                    province: row[4],
+                    licensePlate: row[5],
+                    parkingUntil: row[6]
+                }))
+        };
+        return lot;
+    });
+}
+
+
+
+
 module.exports = {
     testOracleConnection,
     fetchCurrentOccupancy,
     fetchFlaggedVehicles,
     loginUser,
     registerUser,
-    getAllParkingLots
+    getAllParkingLots，
+    getParkingLotById
 };
