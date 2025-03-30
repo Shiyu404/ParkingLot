@@ -1,4 +1,5 @@
 const express = require('express');
+const { initializeDatabase } = require('./db/init');
 const appController = require('./appController');
 
 // Load environment variables from .env file
@@ -20,13 +21,24 @@ app.use(express.json());             // Parse incoming JSON payloads
 //     res.sendFile(__dirname + '/public/DEFAULT_FILE_NAME.html');
 // });
 
-
 // mount the router
 app.use('/', appController);
 
-
 // ----------------------------------------------------------
-// Starting the server
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}/`);
-});
+// Initialize database and start server
+async function startServer() {
+    try {
+        // Initialize database first
+        await initializeDatabase();
+        
+        // Start the server after successful database initialization
+        app.listen(PORT, () => {
+            console.log(`Server running at http://localhost:${PORT}/`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+startServer();

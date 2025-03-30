@@ -1,13 +1,24 @@
 const express = require('express');
+const { pool } = require('./db');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const appService = require('./appService');
 
 const router = express.Router();
 
+// Helper function to set CORS headers
+const setCorsHeaders = (res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+};
+
 // ----------------------------------------------------------
 // API endpoints
 // Modify or extend these routes based on your project's needs.
 router.get('/check-db-connection', async (req, res) => {
+    setCorsHeaders(res);
     const isConnect = await appService.testOracleConnection();
     if (isConnect) {
         res.send('connected');
@@ -17,11 +28,13 @@ router.get('/check-db-connection', async (req, res) => {
 });
 
 router.get('/demotable', async (req, res) => {
+    setCorsHeaders(res);
     const tableContent = await appService.fetchDemotableFromDb();
     res.json({data: tableContent});
 });
 
 router.post("/initiate-demotable", async (req, res) => {
+    setCorsHeaders(res);
     const initiateResult = await appService.initiateDemotable();
     if (initiateResult) {
         res.json({ success: true });
@@ -31,6 +44,7 @@ router.post("/initiate-demotable", async (req, res) => {
 });
 
 router.post("/insert-demotable", async (req, res) => {
+    setCorsHeaders(res);
     const { id, name } = req.body;
     const insertResult = await appService.insertDemotable(id, name);
     if (insertResult) {
@@ -41,6 +55,7 @@ router.post("/insert-demotable", async (req, res) => {
 });
 
 router.post("/update-name-demotable", async (req, res) => {
+    setCorsHeaders(res);
     const { oldName, newName } = req.body;
     
     const updateResult = await appService.updateNameDemotable(oldName, newName);
@@ -52,6 +67,7 @@ router.post("/update-name-demotable", async (req, res) => {
 });
 
 router.get('/count-demotable', async (req, res) => {
+    setCorsHeaders(res);
     const tableCount = await appService.countDemotable();
     if (tableCount >= 0) {
         res.json({ 
@@ -68,6 +84,7 @@ router.get('/count-demotable', async (req, res) => {
 
 // Login endpoint
 router.post('/login', async (req, res) => {
+    setCorsHeaders(res);
     try {
         const { phone,password } = req.body;
         const result = await appService.loginUser(phone, password);
@@ -84,18 +101,9 @@ router.post('/login', async (req, res) => {
 
 //Register endpoint
 router.post('/users/register',async(req,res) => {
+    setCorsHeaders(res);
     try{
-        // if (!['resident', 'visitor'].includes(userType)) {
-        //     return res.status(400).json({ success: false, message: 'Invalid userType' });
-        // }
-        // if (userType === 'resident' && !unitNumber) {
-        //     return res.status(400).json({ success: false, message: 'Unit number is required for residents' });
-        // }
-        // if (userType === 'visitor' && !hostInformation) {
-        //     return res.status(400).json({ success: false, message: 'Host information is required for visitors' });
-        // }
         const { name,phone,password,userType,unitNumber,hostInformation,role = 'user'} = req.body;
-        //console.log('Role:', role);
         const result = await appService.registerUser(name,phone,password,userType,unitNumber,hostInformation,role);
         if (result.success) {
                 res.json(result);
@@ -105,12 +113,11 @@ router.post('/users/register',async(req,res) => {
         console.error('Reigister error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
-    
 });
-
 
 // get current occupancy in the parking lot
 router.get('/admin/occupancy', async (req, res) => {
+    setCorsHeaders(res);
     try {
         const result = await appService.fetchCurrentOccupancy();
         res.json(result);
@@ -122,6 +129,7 @@ router.get('/admin/occupancy', async (req, res) => {
 
 // get the flagged vehicles
 router.get('/admin/violations', async (req, res) => {
+    setCorsHeaders(res);
     try {
         const result = await appService.fetchFlaggedVehicles();
         res.json({ vehicles: result });
@@ -133,6 +141,7 @@ router.get('/admin/violations', async (req, res) => {
 
 // 4.1 get information of all parking lots
 router.get('/parking-lots', async (req, res) => {
+    setCorsHeaders(res);
     try {
         const result = await appService.getAllParkingLots();
         res.json({
@@ -155,6 +164,7 @@ router.get('/parking-lots', async (req, res) => {
 
 // 4.2 get info of specific parking lot
 router.get('/parking-lots/:lotId', async (req, res) => {
+    setCorsHeaders(res);
     try {
         const { lotId } = req.params;
         const result = await appService.getParkingLotById(lotId);
@@ -186,6 +196,7 @@ router.get('/parking-lots/:lotId', async (req, res) => {
 
 //5.1 get user violation
 router.get('/violations/user/:userId', async (req, res) => {
+    setCorsHeaders(res);
     try {
         const { userId } = req.params;
         const { startDate, endDate } = req.query;
@@ -210,6 +221,7 @@ router.get('/violations/user/:userId', async (req, res) => {
 
 // 5.2 Create violation admin only
 router.post('/violations', async (req, res) => {
+    setCorsHeaders(res);
     try {
         const { lotId, province, licensePlate, reason, time } = req.body;
         const result = await appService.createViolation(lotId, province, licensePlate, reason, time);
@@ -233,6 +245,7 @@ router.post('/violations', async (req, res) => {
 
 // 6.1 create payment
 router.post('/payments', async (req, res) => {
+    setCorsHeaders(res);
     try {
         const { amount, paymentMethod, cardNumber, userId, lotId, ticketId } = req.body;
         const result = await appService.createPayment(amount, paymentMethod, cardNumber, userId, lotId, ticketId);
@@ -258,6 +271,7 @@ router.post('/payments', async (req, res) => {
 
 //6.2 get payment history
 router.get('/payments/user/:userId', async (req, res) => {
+    setCorsHeaders(res);
     try {
         const { userId } = req.params;
         const { startDate, endDate } = req.query;
@@ -279,7 +293,5 @@ router.get('/payments/user/:userId', async (req, res) => {
         });
     }
 });
-
-
 
 module.exports = router;
