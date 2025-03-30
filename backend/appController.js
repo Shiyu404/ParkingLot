@@ -184,6 +184,29 @@ router.get('/parking-lots/:lotId', async (req, res) => {
     }
 });
 
+//5.1 get user violation
+router.get('/violations/user/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { startDate, endDate } = req.query;
+        const result = await appService.getUserViolations(userId, startDate, endDate);
+        res.json({
+            status: "success",
+            data: {
+                violations: result
+            }
+        });
+    } catch (error) {
+        console.error('Get violations error:', error);
+        res.status(500).json({
+            status: "error",
+            error: {
+                code: "INTERNAL_ERROR",
+                message: "Failed to get violations"
+            }
+        });
+    }
+});
 
 
 module.exports = router;

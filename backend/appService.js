@@ -300,6 +300,48 @@ async function getParkingLotById(lotId) {
     });
 }
 
+//5.1 get user violation
+async function getUserViolations(userId, startDate, endDate) {
+    let query = `
+        SELECT 
+            v.TICKET_ID as ticketId,
+            v.REASON,
+            v.TIME,
+            v.LOT_ID as lotId,
+            v.PROVINCE,
+            v.LICENSE_PLATE,
+            v.STATUS
+        FROM Violations v
+        JOIN Vehicles ve ON v.PROVINCE = ve.PROVINCE AND v.LICENSE_PLATE = ve.LICENSE_PLATE
+        WHERE ve.USER_ID = :1
+    `;
+    const params = [userId];
+    
+    if (startDate) {
+        query += ` AND v.TIME >= :${params.length + 1}`;
+        params.push(startDate);
+    }
+    if (endDate) {
+        query += ` AND v.TIME <= :${params.length + 1}`;
+        params.push(endDate);
+    }
+    
+    query += ` ORDER BY v.TIME DESC`;
+    
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(query, params);
+        return result.rows.map(row => ({
+            ticketId: row[0],
+            reason: row[1],
+            time: row[2],
+            lotId: row[3],
+            province: row[4],
+            licensePlate: row[5],
+            status: row[6]
+        }));
+    });
+}
+
 
 
 
@@ -309,6 +351,7 @@ module.exports = {
     fetchFlaggedVehicles,
     loginUser,
     registerUser,
-    getAllParkingLots，
-    getParkingLotById
+    getAllParkingLots,
+    getParkingLotById,
+    getUserViolations
 };
