@@ -5,9 +5,13 @@ API Endpoints Definition
    Description: Registers a new user (Resident, Visitor, or Admin).
    Request Body:
    {
-   "username": "john_doe",
-   "password": "secure_password",
-   "role": "resident"
+      "name": string,
+      "phone": string,
+      "password": string,
+      "userType": "resident" | "visitor",
+      "unitNumber"?: number,       
+      "hostInformation"?: string     
+
    }
 
 Response:
