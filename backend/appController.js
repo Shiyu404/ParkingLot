@@ -208,5 +208,34 @@ router.get('/violations/user/:userId', async (req, res) => {
     }
 });
 
+// 5.2 Create violation admin only
+router.post('/violations', async (req, res) => {
+    try {
+        const { lotId, province, licensePlate, reason, time } = req.body;
+        const result = await appService.createViolation(lotId, province, licensePlate, reason, time);
+        res.status(201).json({
+            status: "success",
+            data: {
+                ticketId: result
+            }
+        });
+    } catch (error) {
+        console.error('Create violation error:', error);
+        res.status(500).json({
+            status: "error",
+            error: {
+                code: "INTERNAL_ERROR",
+                message: "Failed to create violation"
+            }
+        });
+    }
+});
+
+
+//
+
+
+
+
 
 module.exports = router;
