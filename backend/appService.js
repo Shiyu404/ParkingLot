@@ -146,6 +146,7 @@ async function registerUser(name,phone,password,userType,unitNumber,hostInformat
             },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
+        await connection.commit();
         if (result.rowsAffected === 0) {
             return { success: false, message: 'User not inserted' };
         }
