@@ -4,9 +4,9 @@ const envVariables = loadEnvFile('../.env');
 
 // Database configuration
 const dbConfig = {
-    user: envVariables.DB_USER,
-    password: envVariables.DB_PASSWORD,
-    connectString: envVariables.DB_CONNECTION_STRING
+    user: envVariables.ORACLE_USER,
+    password: envVariables.ORACLE_PASS,
+    connectString: `${envVariables.ORACLE_HOST}:${envVariables.ORACLE_PORT}/${envVariables.ORACLE_DBNAME}`
 };
 
 // Create connection pool
