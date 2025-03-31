@@ -66,7 +66,7 @@ router.get('/count-demotable', async (req, res) => {
     }
 });
 
-// Login endpoint
+//1.1 Login endpoint
 router.post('/login', async (req, res) => {
     try {
         const { phone,password } = req.body;
@@ -82,18 +82,9 @@ router.post('/login', async (req, res) => {
     }
 });
 
-//Register endpoint
+//1.2 Register endpoint
 router.post('/users/register',async(req,res) => {
     try{
-        // if (!['resident', 'visitor'].includes(userType)) {
-        //     return res.status(400).json({ success: false, message: 'Invalid userType' });
-        // }
-        // if (userType === 'resident' && !unitNumber) {
-        //     return res.status(400).json({ success: false, message: 'Unit number is required for residents' });
-        // }
-        // if (userType === 'visitor' && !hostInformation) {
-        //     return res.status(400).json({ success: false, message: 'Host information is required for visitors' });
-        // }
         const { name,phone,password,userType,unitNumber,hostInformation,role = 'user'} = req.body;
         //console.log('Role:', role);
         const result = await appService.registerUser(name,phone,password,userType,unitNumber,hostInformation,role);
@@ -106,6 +97,22 @@ router.post('/users/register',async(req,res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
     
+});
+
+//1.3 Get user's information
+router.get('/users/:userId', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const result = await appService.getUserInformation(userId);
+        if (result.success) {
+                res.json(result);
+        } else {
+                res.status(400).json({ success: false, message: result.message});
+        }
+    } catch (error) {
+        console.error('Get information error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 
