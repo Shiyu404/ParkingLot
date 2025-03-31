@@ -469,8 +469,29 @@ async function adminLogin(staffId, password) {
     });
 }
 
-
-
+//7.2 Generate Report
+async function generateReport(lotId, description, type) {
+    const query = `
+        INSERT INTO Reports (LOT_ID, DESCRIPTION, TYPE, DATE_GENERATED)
+        VALUES (:1, :2, :3, CURRENT_TIMESTAMP)
+        RETURNING REPORT_ID INTO :4
+    `;
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(query, {
+            bindDefs: [
+                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: lotId },
+                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: description },
+                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: type },
+                { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+            ]
+        });
+        
+        return {
+            reportId: result.outBinds[0],
+            dateGenerated: new Date().toISOString()
+        };
+    });
+}
 
 
 
@@ -489,5 +510,6 @@ module.exports = {
     createViolation,
     createPayment,
     getUserPayments,
-    adminLogin
+    adminLogin,
+    generateReport
 };

@@ -312,7 +312,29 @@ router.post('/admin/login', async (req, res) => {
 });
 
 
-
+//7.2 Generate Report
+router.post('/admin/reports', async (req, res) => {
+    try {
+        const { lotId, description, type } = req.body;
+        const result = await appService.generateReport(lotId, description, type);
+        res.status(201).json({
+            status: "success",
+            data: {
+                reportId: result.reportId,
+                dateGenerated: result.dateGenerated
+            }
+        });
+    } catch (error) {
+        console.error('Generate report error:', error);
+        res.status(500).json({
+            status: "error",
+            error: {
+                code: "INTERNAL_ERROR",
+                message: "Failed to generate report"
+            }
+        });
+    }
+});
 
 
 
