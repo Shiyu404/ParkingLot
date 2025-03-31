@@ -52,6 +52,7 @@ const Login = () => {
         }
 
         try {
+            console.log('Attempting login with:', { phone: loginCredentials.phone });
             const response = await fetch(API_ENDPOINTS.login, {
                 method: 'POST',
                 headers: {
@@ -64,24 +65,31 @@ const Login = () => {
                 }),
             });
 
-            const data = await response.json();
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+            let data;
+            try {
+                const text = await response.text();
+                console.log('Raw response:', text);
+                
+                if (!text) {
+                    throw new Error('Server returned empty response');
+                }
+                data = JSON.parse(text);
+                console.log('Parsed response:', data);
+            } catch (error) {
+                console.error('Failed to parse response:', error);
+                throw new Error('Invalid server response format');
+            }
 
             if (!response.ok) {
-                if (response.status === 401) {
-                    toast({
-                        title: "Login Failed",
-                        description: "Invalid phone number or password",
-                        variant: "destructive",
-                    });
-                } else {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return;
+                throw new Error(data.message || `Server error (${response.status})`);
             }
 
             if (data.success) {
                 // Login successful
-                login(data.user.role, data.user);  // Use user role and info from backend
+                login(data.user.role === 'user' ? data.user.userType : data.user.role, data.user);
                 toast({
                     title: "Login Successful",
                     description: `Welcome back, ${data.user.name}`,
@@ -90,10 +98,18 @@ const Login = () => {
                 // Navigate based on user role
                 if (data.user.role === 'admin') {
                     navigate('/dashboard');
-                } else if (data.user.role === 'resident') {
+                } else if (data.user.role === 'user' && data.user.userType === 'resident') {
                     navigate('/resident-dashboard');
-                } else {
+                } else if (data.user.role === 'user' && data.user.userType === 'visitor') {
                     navigate('/visitor-dashboard');
+                } else {
+                    // 如果角色不匹配，导航到首页
+                    navigate('/');
+                    toast({
+                        title: "Navigation Error",
+                        description: "Unknown user role or type",
+                        variant: "destructive",
+                    });
                 }
             } else {
                 // Login failed
@@ -107,7 +123,7 @@ const Login = () => {
             console.error('Login error:', error);
             toast({
                 title: "Login Failed",
-                description: "Server connection failed. Please try again later",
+                description: error.message || "Server connection failed. Please try again later",
                 variant: "destructive",
             });
         }
