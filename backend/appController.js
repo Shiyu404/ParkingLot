@@ -280,6 +280,40 @@ router.get('/payments/user/:userId', async (req, res) => {
     }
 });
 
+// 7.1 Admin Login
+router.post('/admin/login', async (req, res) => {
+    try {
+        const { staffId, password } = req.body;
+        const result = await appService.adminLogin(staffId, password);
+        if (result.success) {
+            res.json({
+                status: "success",
+                data: result.data
+            });
+        } else {
+            res.status(401).json({
+                status: "error",
+                error: {
+                    code: "UNAUTHORIZED",
+                    message: "Invalid staff ID or password"
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Admin login error:', error);
+        res.status(500).json({
+            status: "error",
+            error: {
+                code: "INTERNAL_ERROR",
+                message: "Failed to login"
+            }
+        });
+    }
+});
+
+
+
+
 
 
 module.exports = router;

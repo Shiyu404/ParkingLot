@@ -440,6 +440,42 @@ async function getUserPayments(userId, startDate, endDate) {
     });
 }
 
+// 7.1 Admin Login
+async function adminLogin(staffId, password) {
+    const query = `
+        SELECT 
+            s.STAFF_ID as staffId,
+            u.NAME,
+            s.LOT_ID as lotId
+        FROM Staff s
+        JOIN Users u ON s.USER_ID = u.ID
+        WHERE s.STAFF_ID = :1 AND u.PASSWORD = :2
+    `;
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(query, [staffId, password]);
+        if (result.rows.length === 0) {
+            return { success: false };
+        }
+        
+        const row = result.rows[0];
+        return {
+            success: true,
+            data: {
+                staffId: row[0],
+                name: row[1],
+                lotId: row[2]
+            }
+        };
+    });
+}
+
+
+
+
+
+
+
+
 
 module.exports = {
     testOracleConnection,
@@ -453,4 +489,5 @@ module.exports = {
     createViolation,
     createPayment,
     getUserPayments,
+    adminLogin
 };
