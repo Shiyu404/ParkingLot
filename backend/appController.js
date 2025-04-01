@@ -374,6 +374,42 @@ router.get('/payments/user/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const { startDate, endDate } = req.query;
+
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_USER_ID",
+                    message: "User ID is required",
+                    details: "Please provide a valid user ID in the URL"
+                }
+            });
+        }
+
+        if (startDate && !isValidDate(startDate)) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_START_DATE",
+                    message: "Invalid start date format",
+                    details: "Start date should be in ISO 8601 format (YYYY-MM-DD)"
+                }
+            });
+        }
+
+        if (endDate && !isValidDate(endDate)) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_END_DATE",
+                    message: "Invalid end date format",
+                    details: "End date should be in ISO 8601 format (YYYY-MM-DD)"
+                }
+            });
+        }
+
+
         const result = await appService.getUserPayments(userId, startDate, endDate);
         res.json({
             status: "success",
@@ -386,8 +422,9 @@ router.get('/payments/user/:userId', async (req, res) => {
         res.status(500).json({
             status: "error",
             error: {
-                code: "INTERNAL_ERROR",
-                message: "Failed to get payments"
+                code: "PAYMENTS_FETCH_ERROR",
+                message: "Failed to fetch user payments",
+                details: error.message || "Database connection or query execution failed"
             }
         });
     }
@@ -397,6 +434,18 @@ router.get('/payments/user/:userId', async (req, res) => {
 router.post('/admin/login', async (req, res) => {
     try {
         const { staffId, password } = req.body;
+        
+        if (!staffId || !password) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "MISSING_CREDENTIALS",
+                    message: "Missing credentials",
+                    details: "Please provide both staffId and password"
+                }
+            });
+        }
+
         const result = await appService.adminLogin(staffId, password);
         if (result.success) {
             res.json({
@@ -407,8 +456,9 @@ router.post('/admin/login', async (req, res) => {
             res.status(401).json({
                 status: "error",
                 error: {
-                    code: "UNAUTHORIZED",
-                    message: "Invalid staff ID or password"
+                    code: "INVALID_CREDENTIALS",
+                    message: "Invalid credentials",
+                    details: "The provided staff ID or password is incorrect"
                 }
             });
         }
@@ -417,18 +467,45 @@ router.post('/admin/login', async (req, res) => {
         res.status(500).json({
             status: "error",
             error: {
-                code: "INTERNAL_ERROR",
-                message: "Failed to login"
+                code: "ADMIN_LOGIN_ERROR",
+                message: "Failed to process admin login",
+                details: error.message || "Database connection or query execution failed"
             }
         });
     }
 });
 
 
+
 //7.2 Generate Report
 router.post('/admin/reports', async (req, res) => {
     try {
         const { lotId, description, type } = req.body;
+
+        if (!lotId || !description || !type) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "MISSING_REQUIRED_FIELDS",
+                    message: "Missing required fields",
+                    details: "Please provide all required fields: lotId, description, and type"
+                }
+            });
+        }
+
+        if (!['monthly', 'quarterly', 'incident'].includes(type)) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_REPORT_TYPE",
+                    message: "Invalid report type",
+                    details: "Report type must be one of: monthly, quarterly, incident"
+                }
+            });
+        }
+
+
+
         const result = await appService.generateReport(lotId, description, type);
         res.status(201).json({
             status: "success",
@@ -442,13 +519,23 @@ router.post('/admin/reports', async (req, res) => {
         res.status(500).json({
             status: "error",
             error: {
-                code: "INTERNAL_ERROR",
-                message: "Failed to generate report"
+                code: "REPORT_GENERATION_ERROR",
+                message: "Failed to generate report",
+                details: error.message || "Database connection or query execution failed"
             }
         });
     }
 });
 
+function isValidDate(dateString) {
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date);
+}
+
+function isValidCardNumber(cardNumber) {
+    // Basic validation: 13-19 digits
+    return /^\d{13,19}$/.test(cardNumber);
+}
 
 
 module.exports = router;
