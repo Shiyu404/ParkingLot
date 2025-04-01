@@ -94,7 +94,7 @@ router.post('/users/register',async(req,res) => {
                 res.status(400).json({ success: false, message: result.message});
     }} catch (error) {
         console.error('Reigister error:', error);
-        res.status(500).json({ success: false, message: result.message });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
     
 });
@@ -102,7 +102,7 @@ router.post('/users/register',async(req,res) => {
 //1.3 Get user's information
 router.get('/users/:userId', async (req, res) => {
     try {
-        const { userId } = req.body;
+        const userId = parseInt(req.params.userId, 10);
         const result = await appService.getUserInformation(userId);
         if (result.success) {
                 res.json(result);
@@ -111,10 +111,9 @@ router.get('/users/:userId', async (req, res) => {
         }
     } catch (error) {
         console.error('Get information error:', error);
-        res.status(500).json({ success: false, message: result.message });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
-
 
 // get current occupancy in the parking lot
 router.get('/admin/occupancy', async (req, res) => {

@@ -182,33 +182,37 @@ async function registerUser(name,phone,password,userType,unitNumber,hostInformat
 async function getUserInformation(userId) {
     return await withOracleDB(async (connection) => {
         const result = await connection.execute(
-            `SELECT * FROM Vehicles v
+            `SELECT * FROM Users u
             LEFT JOIN Vehicles v ON u.ID = v.USER_ID
-            WHERE v.USER_ID = :userId`,
+            WHERE u.ID = :userId`,
             {userId},
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
         if (result.rows.length > 0) {
-            const user = result.rows[0];
-            return {
-                success: true,
-                user: {
-                    id: user.ID,
-                    phone: user.PHONE,
-                    name: user.NAME,
-                    role: user.ROLE,
-                    userType: user.USER_TYPE,
-                    unitNumber: user.UNIT_NUMBER,
-                    hostInformation: user.HOST_INFORMATION
-                },
-                vehicle: {
-                    province: user.PROVINCE,
-                    licensePlate:user.LICENSE_PLATE,
-                    parkingUntil:user.PARKING_UNTIL
-                }
+            const userInfo = {
+                id: result.rows[0].ID,
+                phone: result.rows[0].PHONE,
+                name: result.rows[0].NAME,
+                role: result.rows[0].ROLE,
+                userType: result.rows[0].USER_TYPE,
+                unitNumber: result.rows[0].UNIT_NUMBER,
+                hostInformation: result.rows[0].HOST_INFORMATION,
+                vehicles: []
             };
+
+            result.rows.forEach(row => {
+                if (row.PROVINCE && row.LICENSE_PLATE) {
+                    userInfo.vehicles.push({
+                        province: row.PROVINCE,
+                        licensePlate: row.LICENSE_PLATE,
+                        parkingUntil: row.PARKING_UNTIL
+                    });
+                }
+            });
+
+            return { success: true, user: userInfo };
         } 
-        return { success: false, message: "userId does not exist"};
+        return { success: false, message: "User does not exist"};
     }).catch((error) => {
         return { success: false, message: "Get information error" };
     });
@@ -536,6 +540,7 @@ module.exports = {
     fetchFlaggedVehicles,
     loginUser,
     registerUser,
+    getUserInformation,
     getAllParkingLots,
     getParkingLotById,
     getUserViolations,
