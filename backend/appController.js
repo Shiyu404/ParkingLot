@@ -153,8 +153,9 @@ router.get('/parking-lots', async (req, res) => {
         res.status(500).json({
             status: "error",
             error: {
-                code: "INTERNAL_ERROR",
-                message: "Failed to get parking lots"
+                code: "PARKING_LOTS_FETCH_ERROR",
+                message: "Failed to fetch parking lots information",
+                details: error.message || "Database connection or query execution failed"
             }
         });
     }
@@ -164,6 +165,16 @@ router.get('/parking-lots', async (req, res) => {
 router.get('/parking-lots/:lotId', async (req, res) => {
     try {
         const { lotId } = req.params;
+        if (!lotId) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_LOT_ID",
+                    message: "Parking lot ID is required",
+                    details: "Please provide a valid parking lot ID in the URL"
+                }
+            });
+        }
         const result = await appService.getParkingLotById(lotId);
         if (result) {
             res.json({
@@ -174,8 +185,9 @@ router.get('/parking-lots/:lotId', async (req, res) => {
             res.status(404).json({
                 status: "error",
                 error: {
-                    code: "NOT_FOUND",
-                    message: "Parking lot not found"
+                    code: "LOT_NOT_FOUND",
+                    message: "Parking lot not found",
+                    details: `No parking lot found with ID: ${lotId}`
                 }
             });
         }
@@ -184,8 +196,9 @@ router.get('/parking-lots/:lotId', async (req, res) => {
         res.status(500).json({
             status: "error",
             error: {
-                code: "INTERNAL_ERROR",
-                message: "Failed to get parking lot"
+                code: "PARKING_LOT_FETCH_ERROR",
+                message: "Failed to fetch parking lot information",
+                details: error.message || "Database connection or query execution failed"
             }
         });
     }
@@ -196,6 +209,40 @@ router.get('/violations/user/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const { startDate, endDate } = req.query;
+            
+        if (!userId) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_USER_ID",
+                    message: "User ID is required",
+                    details: "Please provide a valid user ID in the URL"
+                }
+            });
+        }
+
+        if (startDate && !isValidDate(startDate)) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_START_DATE",
+                    message: "Invalid start date format",
+                    details: "Start date should be in ISO 8601 format (YYYY-MM-DD)"
+                }
+            });
+        }
+
+        if (endDate && !isValidDate(endDate)) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_END_DATE",
+                    message: "Invalid end date format",
+                    details: "End date should be in ISO 8601 format (YYYY-MM-DD)"
+                }
+            });
+        }
+
         const result = await appService.getUserViolations(userId, startDate, endDate);
         res.json({
             status: "success",
@@ -208,8 +255,9 @@ router.get('/violations/user/:userId', async (req, res) => {
         res.status(500).json({
             status: "error",
             error: {
-                code: "INTERNAL_ERROR",
-                message: "Failed to get violations"
+                code: "VIOLATIONS_FETCH_ERROR",
+                message: "Failed to fetch user violations",
+                details: error.message || "Database connection or query execution failed"
             }
         });
     }
@@ -219,6 +267,28 @@ router.get('/violations/user/:userId', async (req, res) => {
 router.post('/violations', async (req, res) => {
     try {
         const { lotId, province, licensePlate, reason, time } = req.body;
+        if (!lotId || !province || !licensePlate || !reason || !time) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "MISSING_REQUIRED_FIELDS",
+                    message: "Missing required fields",
+                    details: "Please provide all required fields: lotId, province, licensePlate, reason, and time"
+                }
+            });
+        }
+
+        if (!isValidDate(time)) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_TIME_FORMAT",
+                    message: "Invalid time format",
+                    details: "Time should be in ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
+                }
+            });
+        }
+
         const result = await appService.createViolation(lotId, province, licensePlate, reason, time);
         res.status(201).json({
             status: "success",
@@ -231,8 +301,9 @@ router.post('/violations', async (req, res) => {
         res.status(500).json({
             status: "error",
             error: {
-                code: "INTERNAL_ERROR",
-                message: "Failed to create violation"
+                code: "VIOLATION_CREATE_ERROR",
+                message: "Failed to create violation record",
+                details: error.message || "Database connection or query execution failed"
             }
         });
     }
@@ -242,6 +313,41 @@ router.post('/violations', async (req, res) => {
 router.post('/payments', async (req, res) => {
     try {
         const { amount, paymentMethod, cardNumber, userId, lotId, ticketId } = req.body;
+
+        if (!amount || !paymentMethod || !cardNumber || !userId) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "MISSING_REQUIRED_FIELDS",
+                    message: "Missing required fields",
+                    details: "Please provide all required fields: amount, paymentMethod, cardNumber, and userId"
+                }
+            });
+        }
+
+        if (amount <= 0) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_AMOUNT",
+                    message: "Invalid payment amount",
+                    details: "Payment amount must be greater than 0"
+                }
+            });
+        }
+
+        if (!isValidCardNumber(cardNumber)) {
+            return res.status(400).json({
+                status: "error",
+                error: {
+                    code: "INVALID_CARD_NUMBER",
+                    message: "Invalid card number",
+                    details: "Please provide a valid card number"
+                }
+            });
+        }
+
+
         const result = await appService.createPayment(amount, paymentMethod, cardNumber, userId, lotId, ticketId);
         res.status(201).json({
             status: "success",
