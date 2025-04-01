@@ -145,6 +145,16 @@ async function registerUser(name, phone, password, userType, unitNumber, hostInf
             if (phoneResult.rows.length > 0){
                 return { success: false, message: 'Phone number should be unique' };
             }
+            // check userType and unitNumber/hostInformation
+            if((userType == "resident"&&unitNumber == null )){
+                return { success: false, message: 'Resident should have unitNumber' };
+            } else if ((userType == "resident"&&hostInformation!= null )){
+                return { success: false, message: 'Resident should not have hostInformation' };
+            } else if((userType == "visitor"&&unitNumber != null )){
+                return { success: false, message: 'Visitor should not have unitNumber' };
+            } else if((userType == "visitor"&&hostInformation == null )){
+                return { success: false, message: 'Visitor should have hostInformation' };
+            }
 
             const result = await connection.execute(
                 `INSERT INTO Users(NAME, PHONE, PASSWORD, USER_TYPE, UNIT_NUMBER, HOST_INFORMATION, ROLE)

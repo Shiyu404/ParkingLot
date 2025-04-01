@@ -85,7 +85,6 @@ router.post('/login', async (req, res) => {
 router.post('/users/register',async(req,res) => {
     try{
         const { name,phone,password,userType,unitNumber,hostInformation,role = 'user'} = req.body;
-        //console.log('Role:', role);
         const result = await appService.registerUser(name,phone,password,userType,unitNumber,hostInformation,role);
         if (result.success) {
                 res.json(result);
