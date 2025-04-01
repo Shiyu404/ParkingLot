@@ -338,6 +338,47 @@ async function registerVehicle(userId,province,licensePlate,lotId,parkingUntil) 
     });
 }
 
+// 3.1 get user's visitor passes
+async function getUserVisitorPasses(userId) {
+    return await withOracleDB(async (connection) => {
+        const userResult = await connection.execute(
+            `SELECT * FROM Users u
+            WHERE u.ID = :userId`,
+            {userId},
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (userResult.rows.length <= 0) {
+            return { success: false, message: "User does not exist"};
+        }
+
+        const passResult = await connection.execute(
+            `SELECT * FROM VisitorPasses v
+            WHERE v.USER_ID = :userId`,
+            {userId},
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const passes = [];
+        if (passResult.rows.length > 0) {
+            passResult.rows.forEach(row => {
+                if (row.PASS_ID) {
+                    passes.push({
+                        visitorPassId: row.PASS_ID,
+                        validTime: row.VALID_TIME,
+                        status: row.STATUS
+                    });
+                }
+            });
+
+            return { success: true, visitorPasses:passes };
+        } 
+        return { success: false, message: "User does not have visitor passes"};
+    }).catch((error) => {
+        return { success: false, message: "Get visitor passes error" };
+    });
+}
+
+
+
 // Get current occupancy in the parking lot
 async function fetchCurrentOccupancy() {
     let connection;
@@ -664,6 +705,7 @@ module.exports = {
     getUserInformation,
     getUserVehiclesInformation,
     registerVehicle,
+    getUserVisitorPasses,
     getAllParkingLots,
     getParkingLotById,
     getUserViolations,

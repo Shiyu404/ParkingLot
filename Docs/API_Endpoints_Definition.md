@@ -112,7 +112,7 @@ Response (201 Created):
 
 3. Visitor Pass Module (/visitor-passes)
 3.1 Get Visitor Pass List
-Endpoint: GET /visitor-passes/user/:userId
+Endpoint: GET /visitorPasses/user/:userId
 Response (200 OK):
 
 {

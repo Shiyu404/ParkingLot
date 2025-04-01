@@ -145,6 +145,22 @@ router.post('/vehicles',async(req,res) => {
     
 });
 
+// 3.1 get user's visitor passes
+router.get('/visitorPasses/user/:userId', async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId, 10);
+        const result = await appService.getUserVisitorPasses(userId);
+        if (result.success) {
+                res.json(result);
+        } else {
+                res.status(400).json({ success: false, message: result.message});
+        }
+    } catch (error) {
+        console.error('Get visitor passes error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // get current occupancy in the parking lot
 router.get('/admin/occupancy', async (req, res) => {
     try {
