@@ -210,11 +210,7 @@ router.get('/parkingLots', async (req, res) => {
         console.error('Get parking lots error:', error);
         res.status(500).json({
             success: false,
-            error: {
-                code: "PARKING_LOTS_FETCH_ERROR",
-                message: "Failed to fetch parking lots information",
-                details: error.message || "Database connection or query execution failed"
-            }
+            message: "Failed to fetch parking lots information"
         });
     }
 });
@@ -226,11 +222,7 @@ router.get('/parkingLots/:lotId', async (req, res) => {
         if (!lotId) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_LOT_ID",
-                    message: "Parking lot ID is required",
-                    details: "Please provide a valid parking lot ID in the URL"
-                }
+                message: "Please provide a valid parking lot ID in the URL"
             });
         }
         const parkingLots = await appService.getParkingLotById(lotId);
@@ -242,22 +234,14 @@ router.get('/parkingLots/:lotId', async (req, res) => {
         } else {
             res.status(404).json({
                 success: false,
-                error: {
-                    code: "LOT_NOT_FOUND",
-                    message: "Parking lot not found",
-                    details: `No parking lot found with ID: ${lotId}`
-                }
+                message: "No parking lot with this id is found"
             });
         }
     } catch (error) {
         console.error('Get parking lot error:', error);
         res.status(500).json({
             success: false,
-            error: {
-                code: "PARKING_LOT_FETCH_ERROR",
-                message: "Failed to fetch parking lot information",
-                details: error.message || "Database connection or query execution failed"
-            }
+            message: "Failed to fetch parking lot information"
         });
     }
 });
@@ -271,33 +255,21 @@ router.get('/violations/user/:userId', async (req, res) => {
         if (!userId) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_USER_ID",
-                    message: "User ID is required",
-                    details: "Please provide a valid user ID in the URL"
-                }
+                message: "Please provide a valid user ID in the URL"
             });
         }
 
         if (startDate && !isValidDate(startDate)) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_START_DATE",
-                    message: "Invalid start date format",
-                    details: "Start date should be in ISO 8601 format (YYYY-MM-DD)"
-                }
+                message: "Start date should be in ISO 8601 format (YYYY-MM-DD)"
             });
         }
 
         if (endDate && !isValidDate(endDate)) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_END_DATE",
-                    message: "Invalid end date format",
-                    details: "End date should be in ISO 8601 format (YYYY-MM-DD)"
-                }
+                message: "End date should be in ISO 8601 format (YYYY-MM-DD)"
             });
         }
 
@@ -312,11 +284,7 @@ router.get('/violations/user/:userId', async (req, res) => {
         console.error('Get violations error:', error);
         res.status(500).json({
             success: false,
-            error: {
-                code: "VIOLATIONS_FETCH_ERROR",
-                message: "Failed to fetch user violations",
-                details: error.message || "Database connection or query execution failed"
-            }
+            message: "Failed to fetch user violations"
         });
     }
 });
@@ -328,22 +296,14 @@ router.post('/violations', async (req, res) => {
         if (!lotId || !province || !licensePlate || !reason || !time) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "MISSING_REQUIRED_FIELDS",
-                    message: "Missing required fields",
-                    details: "Please provide all required fields: lotId, province, licensePlate, reason, and time"
-                }
+                message: "Please provide all required fields: lotId, province, licensePlate, reason, and time"
             });
         }
 
         if (!isValidDate(time)) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_TIME_FORMAT",
-                    message: "Invalid time format",
-                    details: "Time should be in ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
-                }
+                message: "Time should be in ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
             });
         }
 
@@ -353,11 +313,7 @@ router.post('/violations', async (req, res) => {
         console.error('Create violation error:', error);
         res.status(500).json({
             success: false,
-            error: {
-                code: "VIOLATION_CREATE_ERROR",
-                message: "Failed to create violation record",
-                details: error.message || "Database connection or query execution failed"
-            }
+            message: "Failed to create violation record"
         });
     }
 });
@@ -370,33 +326,21 @@ router.post('/payments', async (req, res) => {
         if (!amount || !paymentMethod || !cardNumber || !userId) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "MISSING_REQUIRED_FIELDS",
-                    message: "Missing required fields",
-                    details: "Please provide all required fields: amount, paymentMethod, cardNumber, and userId"
-                }
+                message: "Please provide all required fields: amount, paymentMethod, cardNumber, and userId"
             });
         }
 
         if (amount <= 0) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_AMOUNT",
-                    message: "Invalid payment amount",
-                    details: "Payment amount must be greater than 0"
-                }
+                message: "Payment amount must be greater than 0"
             });
         }
 
         if (!isValidCardNumber(cardNumber)) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_CARD_NUMBER",
-                    message: "Invalid card number",
-                    details: "Please provide a valid card number"
-                }
+                message: "Please provide a valid card number"
             });
         }
 
@@ -414,10 +358,7 @@ router.post('/payments', async (req, res) => {
         console.error('Create payment error:', error);
         res.status(500).json({
             success: false,
-            error: {
-                code: "INTERNAL_ERROR",
-                message: "Failed to create payment"
-            }
+            message: "Failed to create payment"
         });
     }
 });
@@ -432,33 +373,21 @@ router.get('/payments/user/:userId', async (req, res) => {
         if (!userId) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_USER_ID",
-                    message: "User ID is required",
-                    details: "Please provide a valid user ID in the URL"
-                }
+                message: "Please provide a valid user ID in the URL"
             });
         }
 
         if (startDate && !isValidDate(startDate)) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_START_DATE",
-                    message: "Invalid start date format",
-                    details: "Start date should be in ISO 8601 format (YYYY-MM-DD)"
-                }
+                message: "Start date should be in ISO 8601 format (YYYY-MM-DD)"
             });
         }
 
         if (endDate && !isValidDate(endDate)) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_END_DATE",
-                    message: "Invalid end date format",
-                    details: "End date should be in ISO 8601 format (YYYY-MM-DD)"
-                }
+                message: "End date should be in ISO 8601 format (YYYY-MM-DD)"
             });
         }
 
@@ -474,11 +403,7 @@ router.get('/payments/user/:userId', async (req, res) => {
         console.error('Get payments error:', error);
         res.status(500).json({
             success: false,
-            error: {
-                code: "PAYMENTS_FETCH_ERROR",
-                message: "Failed to fetch user payments",
-                details: error.message || "Database connection or query execution failed"
-            }
+            message: "Failed to fetch user payments"
         });
     }
 });
@@ -491,11 +416,7 @@ router.post('/admin/login', async (req, res) => {
         if (!staffId || !password) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "MISSING_CREDENTIALS",
-                    message: "Missing credentials",
-                    details: "Please provide both staffId and password"
-                }
+                message: "Please provide both staffId and password"
             });
         }
 
@@ -508,22 +429,14 @@ router.post('/admin/login', async (req, res) => {
         } else {
             res.status(401).json({
                 success: false,
-                error: {
-                    code: "INVALID_CREDENTIALS",
-                    message: "Invalid credentials",
-                    details: "The provided staff ID or password is incorrect"
-                }
+                message: "The provided staff ID or password is incorrect"
             });
         }
     } catch (error) {
         console.error('Admin login error:', error);
         res.status(500).json({
             success: false,
-            error: {
-                code: "ADMIN_LOGIN_ERROR",
-                message: "Failed to process admin login",
-                details: error.message || "Database connection or query execution failed"
-            }
+            message: "Failed to process admin login"
         });
     }
 });
@@ -538,22 +451,14 @@ router.post('/admin/reports', async (req, res) => {
         if (!lotId || !description || !type) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "MISSING_REQUIRED_FIELDS",
-                    message: "Missing required fields",
-                    details: "Please provide all required fields: lotId, description, and type"
-                }
+                message: "Please provide all required fields: lotId, description, and type"
             });
         }
 
         if (!['monthly', 'quarterly', 'incident'].includes(type)) {
             return res.status(400).json({
                 success: false,
-                error: {
-                    code: "INVALID_REPORT_TYPE",
-                    message: "Invalid report type",
-                    details: "Report type must be one of: monthly, quarterly, incident"
-                }
+                message: "Report type must be one of: monthly, quarterly, incident"
             });
         }
 
@@ -571,11 +476,7 @@ router.post('/admin/reports', async (req, res) => {
         console.error('Generate report error:', error);
         res.status(500).json({
             success: false,
-            error: {
-                code: "REPORT_GENERATION_ERROR",
-                message: "Failed to generate report",
-                details: error.message || "Database connection or query execution failed"
-            }
+            message: "Failed to generate report"
         });
     }
 });
