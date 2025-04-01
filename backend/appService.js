@@ -257,6 +257,58 @@ async function getUserVehiclesInformation(userId) {
     });
 }
 
+// 2.2 Register vehicles
+async function registerVehicle(userId,province,licensePlate,parkingUntil) {
+    return await withOracleDB(async (connection) => {
+        const userResult = await connection.execute(
+            `SELECT * FROM Users WHERE ID = :userId`,
+            { userId },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (userResult.rows.length <= 0) {
+            return { success: false, message: "User does not exist"};
+        }
+
+        const vehicleResult = await connection.execute(
+            `INSERT INTO Vehicles(USER_ID,PROVINCE,LICENSE_PLATE,PARKING_UNTIL)
+             VALUES(:userId,:province,:licensePlate,:parkingUntil)`,
+             {
+                userId,
+                parkingUntil
+            },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        await connection.commit();
+        if (vehicleResult.rowsAffected === 0) {
+            return { success: false, message: 'User not inserted' };
+        }
+
+        const result = await connection.execute(
+            `SELECT * FROM Vehicles WHERE PROVINCE=:province AND LICENSE_PLATE = :licensePlate`,
+            {   province,
+                licensePlate
+            },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        
+        if (result.rows.length > 0) {
+            const vehicle = result.rows[0];
+            return {
+                success: true,
+                vehicle: {
+                    province: vehicle.ID,
+                    licensePlate: vehicle.NAME,
+                    licensePlate: vehicle.USER_TYPE
+                }
+            };
+        }
+        return { success: false,message: 'Register vehicle error'};
+    }).catch((error) => {
+        console.error('Register vehicle error:', error);
+        return { success: false };
+    });
+}
+
 // Get current occupancy in the parking lot
 async function fetchCurrentOccupancy() {
     let connection;

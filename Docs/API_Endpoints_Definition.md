@@ -50,7 +50,7 @@ Endpoint: GET /users/:userId
 Response (200 OK):
 
 {
-  "status": "success",
+  "success": true/false,
   "userInfo": {
     "userId": number,
     "name": "string",
@@ -73,7 +73,7 @@ Endpoint: GET /vehicles/user/:userId
 Response (200 OK):
 
 {
-  "status": "success",
+  "success": true/false,
   "data": {
     "vehicles": [
       {
@@ -100,8 +100,8 @@ Request Body:
 Response (201 Created):
 
 {
-  "status": "success",
-  "data": {
+  "success": true/false,
+  "vehicle": {
     "province": "string",
     "licensePlate": "string",
     "parkingUntil": "string" // ISO 8601 date
