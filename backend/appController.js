@@ -77,7 +77,6 @@ router.post('/login', async (req, res) => {
             res.status(401).json({ success: false, message: 'Invalid phone number or password' });
         }
     } catch (error) {
-        console.error('Login error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
@@ -93,7 +92,6 @@ router.post('/users/register',async(req,res) => {
         } else {
                 res.status(400).json({ success: false, message: result.message});
     }} catch (error) {
-        console.error('Reigister error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
     

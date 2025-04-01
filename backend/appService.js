@@ -132,49 +132,66 @@ async function loginUser(phone, password) {
 }
 
 //1.2 Register user
-async function registerUser(name,phone,password,userType,unitNumber,hostInformation,role) {
+async function registerUser(name, phone, password, userType, unitNumber, hostInformation, role) {
     return await withOracleDB(async (connection) => {
-        const result = await connection.execute(
-            `INSERT INTO Users(NAME,PHONE,PASSWORD,USER_TYPE,UNIT_NUMBER,HOST_INFORMATION,ROLE)
-             VALUES(:name,:phone,:password,:userType,:unitNumber,:hostInformation,:role)`,
-             {
-                name,
-                phone,
-                password,
-                userType,
-                unitNumber,
-                hostInformation,  
-                role
-            },
-            { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
-        await connection.commit();
-        if (result.rowsAffected === 0) {
-            return { success: false, message: 'User not inserted' };
+        try {
+            // check if phone already exist
+            const phoneResult = await connection.execute(
+                `SELECT PHONE FROM Users 
+                 WHERE PHONE = :phone`,
+                 {phone},
+                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            if (phoneResult.rows.length > 0){
+                return { success: false, message: 'Phone number should be unique' };
+            }
+
+            const result = await connection.execute(
+                `INSERT INTO Users(NAME, PHONE, PASSWORD, USER_TYPE, UNIT_NUMBER, HOST_INFORMATION, ROLE)
+                 VALUES(:name, :phone, :password, :userType, :unitNumber, :hostInformation, :role)`,
+                {
+                    name,
+                    phone,
+                    password,
+                    userType,
+                    unitNumber,
+                    hostInformation,
+                    role
+                },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+
+            if (result.rowsAffected === 0) {
+                return { success: false, message: 'User not inserted' };
+            }
+
+            // Commit the transaction
+            await connection.commit();
+
+            // Check if the user exists now
+            const result1 = await connection.execute(
+                `SELECT * FROM Users WHERE phone = :phone AND password = :password`,
+                { phone, password },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+
+            if (result1.rows.length > 0) {
+                const user = result1.rows[0];
+                return {
+                    success: true,
+                    user: {
+                        id: user.ID,
+                        name: user.NAME,
+                        userType: user.USER_TYPE
+                    }
+                };
+            }
+
+            return { success: false, message: 'Register error' };
+
+        } catch (error) {
+            return { success: false, message: 'Server error' };
         }
-        const result1 = await connection.execute(
-            `SELECT * FROM Users WHERE phone = :phone AND password = :password`,
-            { phone, password },
-            { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
-        
-        if (result1.rows.length > 0) {
-            const user = result1.rows[0];
-            return {
-                success: true,
-                user: {
-                    id: user.ID,
-                    name: user.NAME,
-                    userType: user.USER_TYPE
-                }
-            };
-        }
-        return { success: false,message: 'Register error'};
-    }).catch((error) => {
-        if (error.code === 'ORA-00001') {
-            return { success: false,message: 'Phone number must be unique'};
-        } else 
-            return { success: false,message: 'Register error'};
     });
 }
 
@@ -231,7 +248,7 @@ async function getUserVehiclesInformation(userId) {
             return { success: false, message: "User does not exist"};
         }
         const vehicleResult = await connection.execute(
-            `SELECT * FROM Vehicle v
+            `SELECT * FROM Vehicles v
             WHERE v.USER_ID = :userId`,
             {userId},
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -260,6 +277,7 @@ async function getUserVehiclesInformation(userId) {
 // 2.2 Register vehicles
 async function registerVehicle(userId,province,licensePlate,parkingUntil) {
     return await withOracleDB(async (connection) => {
+        // check if user already exist
         const userResult = await connection.execute(
             `SELECT * FROM Users WHERE ID = :userId`,
             { userId },
@@ -269,20 +287,7 @@ async function registerVehicle(userId,province,licensePlate,parkingUntil) {
             return { success: false, message: "User does not exist"};
         }
 
-        const vehicleResult = await connection.execute(
-            `INSERT INTO Vehicles(USER_ID,PROVINCE,LICENSE_PLATE,PARKING_UNTIL)
-             VALUES(:userId,:province,:licensePlate,:parkingUntil)`,
-             {
-                userId,
-                parkingUntil
-            },
-            { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
-        await connection.commit();
-        if (vehicleResult.rowsAffected === 0) {
-            return { success: false, message: 'User not inserted' };
-        }
-
+        // check if (licensePlate,province) already exist
         const result = await connection.execute(
             `SELECT * FROM Vehicles WHERE PROVINCE=:province AND LICENSE_PLATE = :licensePlate`,
             {   province,
@@ -290,22 +295,45 @@ async function registerVehicle(userId,province,licensePlate,parkingUntil) {
             },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-        
-        if (result.rows.length > 0) {
-            const vehicle = result.rows[0];
+                
+        if (result.rows.length > 0)
+            return { success: false,message: '(licensePlate,province) should be unique'};
+        const vehicleResult = await connection.execute(
+            `INSERT INTO Vehicles(USER_ID, PROVINCE, LICENSE_PLATE, PARKING_UNTIL)
+            VALUES(:userId, :province, :licensePlate, TO_TIMESTAMP(:parkingUntil, 'YYYY-MM-DD HH24:MI:SS'))`,
+             {
+                userId,
+                province,
+                licensePlate,
+                parkingUntil
+            },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        await connection.commit();
+        if (vehicleResult.rowsAffected === 0) {
+            return { success: false, message: 'Vehicle not registered' };
+        }
+        const searchResult = await connection.execute(
+            `SELECT * FROM Vehicles WHERE PROVINCE=:province AND LICENSE_PLATE = :licensePlate`,
+            {   province,
+                licensePlate
+            },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (searchResult.rows.length > 0) {
+            const vehicle = searchResult.rows[0];
             return {
                 success: true,
                 vehicle: {
-                    province: vehicle.ID,
-                    licensePlate: vehicle.NAME,
-                    licensePlate: vehicle.USER_TYPE
+                    province: searchResult.rows[0].PROVINCE,
+                    licensePlate: searchResult.rows[0].LICENSE_PLATE,
+                    parkingUntil: searchResult.rows[0].PARKING_UNTIL
                 }
             };
         }
-        return { success: false,message: 'Register vehicle error'};
+
     }).catch((error) => {
-        console.error('Register vehicle error:', error);
-        return { success: false };
+        return {success:false, message:"Server error"};
     });
 }
 
@@ -634,6 +662,7 @@ module.exports = {
     registerUser,
     getUserInformation,
     getUserVehiclesInformation,
+    registerVehicle,
     getAllParkingLots,
     getParkingLotById,
     getUserViolations,
