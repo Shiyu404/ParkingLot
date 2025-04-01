@@ -94,7 +94,7 @@ router.post('/users/register',async(req,res) => {
                 res.status(400).json({ success: false, message: result.message});
     }} catch (error) {
         console.error('Reigister error:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
+        res.status(500).json({ success: false, message: result.message });
     }
     
 });
@@ -111,7 +111,7 @@ router.get('/users/:userId', async (req, res) => {
         }
     } catch (error) {
         console.error('Get information error:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
+        res.status(500).json({ success: false, message: result.message });
     }
 });
 
