@@ -377,7 +377,51 @@ async function getUserVisitorPasses(userId) {
     });
 }
 
+// 3.2 apply for visitor passes
+async function applyVisitorPasses(userId,validTime) {
+    return await withOracleDB(async (connection) => {
+        try {
+            // check if user already exist
+            const userResult = await connection.execute(
+                `SELECT * FROM Users WHERE ID = :userId`,
+                { userId },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            if (userResult.rows.length <= 0) {
+                return { success: false, message: "User does not exist"};
+            }
 
+            const result = await connection.execute(
+                `INSERT INTO VisitorPasses (USER_ID, VALID_TIME) 
+                 VALUES (:userId, TO_TIMESTAMP(:validTime, 'YYYY-MM-DD HH24:MI:SS')) 
+                 RETURNING PASS_ID, VALID_TIME, STATUS INTO :passId, :returnedValidTime, :returnedStatus`,
+                {
+                    userId,
+                    validTime,
+                    passId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+                    returnedValidTime: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
+                    returnedStatus: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+                }
+            );
+            const visitorPassId = result.outBinds.passId[0];
+            const returnedValidTime = result.outBinds.returnedValidTime[0];
+            const returnedStatus = result.outBinds.returnedStatus[0];
+            // Commit the transaction
+            await connection.commit();
+
+            return {
+                success: true,
+                user: {
+                    visitorPassId: visitorPassId,
+                    validTime:returnedValidTime,
+                    status: returnedStatus
+                }
+            };
+        } catch (error) {
+            return { success: false, message: 'Server error' };
+        }
+    });
+}
 
 // Get current occupancy in the parking lot
 async function fetchCurrentOccupancy() {
@@ -706,6 +750,7 @@ module.exports = {
     getUserVehiclesInformation,
     registerVehicle,
     getUserVisitorPasses,
+    applyVisitorPasses,
     getAllParkingLots,
     getParkingLotById,
     getUserViolations,
