@@ -169,13 +169,12 @@ async function registerUser(name,phone,password,userType,unitNumber,hostInformat
                 }
             };
         }
-        return { success: false };
+        return { success: false,message: 'Register error'};
     }).catch((error) => {
         if (error.code === 'ORA-00001') {
-            console.error('Phone number must be unique', error);
+            return { success: false,message: 'Phone number must be unique'};
         } else 
-            console.error('Register error:', error);
-        return { success: false,message: 'Phone number must be unique'};
+            return { success: false,message: 'Register error'};
     });
 }
 
@@ -183,9 +182,36 @@ async function registerUser(name,phone,password,userType,unitNumber,hostInformat
 async function getUserInformation(userId) {
     return await withOracleDB(async (connection) => {
         const result = await connection.execute(
-            `SELECT `
-        )
-    })
+            `SELECT * FROM Vehicles v
+            LEFT JOIN Vehicles v ON u.ID = v.USER_ID
+            WHERE v.USER_ID = :userId`,
+            {userId},
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (result.rows.length > 0) {
+            const user = result.rows[0];
+            return {
+                success: true,
+                user: {
+                    id: user.ID,
+                    phone: user.PHONE,
+                    name: user.NAME,
+                    role: user.ROLE,
+                    userType: user.USER_TYPE,
+                    unitNumber: user.UNIT_NUMBER,
+                    hostInformation: user.HOST_INFORMATION
+                },
+                vehicle: {
+                    province: user.PROVINCE,
+                    licensePlate:user.LICENSE_PLATE,
+                    parkingUntil:user.PARKING_UNTIL
+                }
+            };
+        } 
+        return { success: false, message: "userId does not exist"};
+    }).catch((error) => {
+        return { success: false, message: "Get information error" };
+    });
 }
 // Get current occupancy in the parking lot
 async function fetchCurrentOccupancy() {

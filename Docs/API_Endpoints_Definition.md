@@ -10,8 +10,8 @@ Request Body:
 Response (200 OK):
 
 {
-  "status": "success",
-  "data": {
+  "success": true/false,
+  "user": {
     "userId": number,
     "name": "string",
     "phone": "string",
@@ -38,8 +38,8 @@ Request Body:
 Response (201 Created):
 
 {
-  "status": "success",
-  "data": {
+  "success": true/false,
+  "user": {
     "userId": number,
     "name": "string",
     "userType": "string"
@@ -51,21 +51,20 @@ Response (200 OK):
 
 {
   "status": "success",
-  "data": {
+  "user": {
     "userId": number,
     "name": "string",
     "phone": "string",
     "userType": "resident" | "visitor",
     "unitNumber": number,
     "hostInformation": "string",
-    "vehicles": [
+  },
+  "vehicles": 
       {
         "province": "string",
         "licensePlate": "string",
         "parkingUntil": "string" // ISO 8601 date
       }
-    ]
-  }
 }
 
 2. Vehicle Module (/vehicles)
