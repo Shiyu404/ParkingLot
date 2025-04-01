@@ -275,7 +275,7 @@ async function getUserVehiclesInformation(userId) {
 }
 
 // 2.2 Register vehicles
-async function registerVehicle(userId,province,licensePlate,parkingUntil) {
+async function registerVehicle(userId,province,licensePlate,lotId,parkingUntil) {
     return await withOracleDB(async (connection) => {
         // check if user already exist
         const userResult = await connection.execute(
@@ -295,16 +295,17 @@ async function registerVehicle(userId,province,licensePlate,parkingUntil) {
             },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-                
         if (result.rows.length > 0)
             return { success: false,message: '(licensePlate,province) should be unique'};
+
         const vehicleResult = await connection.execute(
-            `INSERT INTO Vehicles(USER_ID, PROVINCE, LICENSE_PLATE, PARKING_UNTIL)
-            VALUES(:userId, :province, :licensePlate, TO_TIMESTAMP(:parkingUntil, 'YYYY-MM-DD HH24:MI:SS'))`,
+            `INSERT INTO Vehicles(USER_ID, PROVINCE, LICENSE_PLATE, CURRENT_LOT_ID,PARKING_UNTIL)
+            VALUES(:userId, :province, :licensePlate,:lotId ,TO_TIMESTAMP(:parkingUntil, 'YYYY-MM-DD HH24:MI:SS'))`,
              {
                 userId,
                 province,
                 licensePlate,
+                lotId,
                 parkingUntil
             },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }

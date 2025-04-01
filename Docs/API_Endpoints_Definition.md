@@ -94,6 +94,7 @@ Request Body:
   "userId": number,
   "province": "string",
   "licensePlate": "string",
+  "lotId": "string,
   "parkingUntil": "string" // ISO 8601 date
 }
 

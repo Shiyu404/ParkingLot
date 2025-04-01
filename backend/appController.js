@@ -132,8 +132,8 @@ router.get('/vehicles/user/:userId', async (req, res) => {
 //2.2 Register vehicles
 router.post('/vehicles',async(req,res) => {
     try{
-        const {userId,province,licensePlate,parkingUntil} = req.body;
-        const result = await appService.registerVehicle(userId,province,licensePlate,parkingUntil);
+        const {userId,province,licensePlate,lotId,parkingUntil} = req.body;
+        const result = await appService.registerVehicle(userId,province,licensePlate,lotId,parkingUntil);
         if (result.success) {
                 res.json(result);
         } else {
