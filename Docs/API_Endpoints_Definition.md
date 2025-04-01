@@ -1,22 +1,22 @@
 1. User Module (/users)
 1.1 User Login
 Endpoint: POST /users/login
-Request Body:
 
+Request Body:
 {
   "phone": "string",     // User phone number
   "password": "string"   // User password
 }
-Response (200 OK):
 
+Response:
 {
   "success": true/false,
   "user": {
-    "userId": number,
+    "userId": "string",
     "name": "string",
     "phone": "string",
     "userType": "resident" | "visitor",
-    "token": "string",    // JWT token
+    "role": "string",
     "unitNumber": number,  // Resident users only
     "hostInformation": "string" // Visitor users only
   }
@@ -35,7 +35,7 @@ Request Body:
   "hostInformation": "string" // Required for visitors
 }
 
-Response (201 Created):
+Response:
 
 {
   "success": true/false,
@@ -45,14 +45,15 @@ Response (201 Created):
     "userType": "string"
   }
 }
+
 1.3 Get User Information
 Endpoint: GET /users/:userId
-Response (200 OK):
+Response:
 
 {
   "success": true/false,
   "userInfo": {
-    "userId": number,
+    "id": number,
     "name": "string",
     "phone": "string",
     "userType": "resident" | "visitor",
@@ -70,12 +71,11 @@ Response (200 OK):
 2. Vehicle Module (/vehicles)
 2.1 Get User's Vehicle List
 Endpoint: GET /vehicles/user/:userId
-Response (200 OK):
+Response :
 
 {
   "success": true/false,
-  "data": {
-    "vehicles": [
+  "vehicles": [
       {
         "province": "string",
         "licensePlate": "string",
@@ -83,7 +83,6 @@ Response (200 OK):
         "currentLotId": number
       }
     ]
-  }
 }
 
 2.2 Register New Vehicle
@@ -98,7 +97,7 @@ Request Body:
   "parkingUntil": "string" // ISO 8601 date
 }
 
-Response (201 Created):
+Response :
 
 {
   "success": true/false,
@@ -110,25 +109,24 @@ Response (201 Created):
 }
 
 
-3. Visitor Pass Module (/visitor-passes)
+3. Visitor Pass Module (/visitorPasses)
 3.1 Get Visitor Pass List
 Endpoint: GET /visitorPasses/user/:userId
-Response (200 OK):
+Response:
 
 {
-  "status": "success",
-  "data": {
-    "visitorPasses": [
+  "success": true/false,
+  "visitorPasses": [
       {
         "visitorPassId": number,
         "validTime": "string", // ISO 8601 date
         "status": "active" | "expired"
       }
     ]
-  }
 }
+
 3.2 Apply for Visitor Pass
-Endpoint: POST /visitor-passes
+Endpoint: POST /visitorPasses
 Request Body:
 
 {
@@ -136,11 +134,11 @@ Request Body:
   "validTime": "string" // ISO 8601 date
 }
 
-Response (201 Created):
+Response :
 
 {
-  "status": "success",
-  "data": {
+  "success": true/false,
+  "visitorPass": {
     "visitorPassId": number,
     "validTime": "string", // ISO 8601 date
     "status": "active"
@@ -149,10 +147,10 @@ Response (201 Created):
 
 
 
-4. Parking Lot Module (/parking-lots)
+4. Parking Lot Module (/parkingLots)
 4.1 Get All Parking Lots
-Endpoint: GET /parking-lots
-Response (200 OK):
+Endpoint: GET /parkingLots
+Response :
 {
   "status": "success",
   "data": {
@@ -168,7 +166,7 @@ Response (200 OK):
   }
 }
 4.2 Get Specific Parking Lot
-Endpoint: GET /parking-lots/:lotId
+Endpoint: GET /parkingLots/:lotId
 Response (200 OK):
 
 {
@@ -290,7 +288,7 @@ Request Body:
   "staffId": number,
   "password": "string"
 }
-Response (200 OK):
+Response :
 
 {
   "status": "success",

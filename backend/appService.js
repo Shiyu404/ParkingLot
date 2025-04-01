@@ -237,7 +237,7 @@ async function getUserInformation(userId) {
                 }
             });
 
-            return { success: true, user: userInfo };
+            return { success: true, userInfo: userInfo };
         } 
         return { success: false, message: "User does not exist"};
     }).catch((error) => {
@@ -421,7 +421,7 @@ async function applyVisitorPasses(userId,validTime) {
 
             return {
                 success: true,
-                user: {
+                visitorPass: {
                     visitorPassId: visitorPassId,
                     validTime:returnedValidTime.toISOString().replace('T', ' ').substring(0, 19),
                     status: returnedStatus

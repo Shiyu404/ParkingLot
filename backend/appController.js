@@ -67,7 +67,7 @@ router.get('/count-demotable', async (req, res) => {
 });
 
 //1.1 Login endpoint
-router.post('/login', async (req, res) => {
+router.post('/users/login', async (req, res) => {
     try {
         const { phone,password } = req.body;
         const result = await appService.loginUser(phone, password);
