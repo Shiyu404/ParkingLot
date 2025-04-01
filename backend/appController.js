@@ -72,7 +72,7 @@ router.post('/users/login', async (req, res) => {
         const { phone,password } = req.body;
         const result = await appService.loginUser(phone, password);
         if (result.success) {
-            res.json(result);
+            res.status(201).json(result);
         } else {
             res.status(401).json({ success: false, message: 'Invalid phone number or password' });
         }
@@ -87,7 +87,7 @@ router.post('/users/register',async(req,res) => {
         const { name,phone,password,userType,unitNumber,hostInformation,role = 'user'} = req.body;
         const result = await appService.registerUser(name,phone,password,userType,unitNumber,hostInformation,role);
         if (result.success) {
-                res.json(result);
+                res.status(201).json(result);
         } else {
                 res.status(400).json({ success: false, message: result.message});
     }} catch (error) {
@@ -102,7 +102,7 @@ router.get('/users/:userId', async (req, res) => {
         const userId = parseInt(req.params.userId, 10);
         const result = await appService.getUserInformation(userId);
         if (result.success) {
-                res.json(result);
+                res.status(200).json(result);
         } else {
                 res.status(400).json({ success: false, message: result.message});
         }
@@ -118,7 +118,7 @@ router.get('/vehicles/user/:userId', async (req, res) => {
         const userId = parseInt(req.params.userId, 10);
         const result = await appService.getUserVehiclesInformation(userId);
         if (result.success) {
-                res.json(result);
+                res.status(200).json(result);
         } else {
                 res.status(400).json({ success: false, message: result.message});
         }
@@ -134,7 +134,7 @@ router.post('/vehicles',async(req,res) => {
         const {userId,province,licensePlate,lotId,parkingUntil} = req.body;
         const result = await appService.registerVehicle(userId,province,licensePlate,lotId,parkingUntil);
         if (result.success) {
-                res.json(result);
+                res.status(201).json(result);
         } else {
                 res.status(400).json({ success: false, message: result.message});
     }} catch (error) {
@@ -150,7 +150,7 @@ router.get('/visitorPasses/user/:userId', async (req, res) => {
         const userId = parseInt(req.params.userId, 10);
         const result = await appService.getUserVisitorPasses(userId);
         if (result.success) {
-                res.json(result);
+                res.status(200).json(result);
         } else {
                 res.status(400).json({ success: false, message: result.message});
         }
@@ -166,7 +166,7 @@ router.post('/visitorPasses',async(req,res) => {
         const {userId,validTime} = req.body;
         const result = await appService.applyVisitorPasses(userId,validTime);
         if (result.success) {
-                res.json(result);
+                res.status(201).json(result);
         } else {
                 res.status(400).json({ success: false, message: result.message});
     }} catch (error) {
@@ -202,7 +202,7 @@ router.get('/admin/violations', async (req, res) => {
 router.get('/parkingLots', async (req, res) => {
     try {
         const parkingLots = await appService.getAllParkingLots();
-        res.json({
+        res.status(200).json({
             success: true,
             parkingLots
         });
@@ -235,7 +235,7 @@ router.get('/parkingLots/:lotId', async (req, res) => {
         }
         const parkingLots = await appService.getParkingLotById(lotId);
         if (parkingLots) {
-            res.json({
+            res.status(200).json({
                 success: true,
                 parkingLots
             });
@@ -270,7 +270,7 @@ router.get('/violations/user/:userId', async (req, res) => {
             
         if (!userId) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_USER_ID",
                     message: "User ID is required",
@@ -281,7 +281,7 @@ router.get('/violations/user/:userId', async (req, res) => {
 
         if (startDate && !isValidDate(startDate)) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_START_DATE",
                     message: "Invalid start date format",
@@ -292,7 +292,7 @@ router.get('/violations/user/:userId', async (req, res) => {
 
         if (endDate && !isValidDate(endDate)) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_END_DATE",
                     message: "Invalid end date format",
@@ -302,8 +302,8 @@ router.get('/violations/user/:userId', async (req, res) => {
         }
 
         const result = await appService.getUserViolations(userId, startDate, endDate);
-        res.json({
-            status: "success",
+        res.status(200).json({
+            success: true,
             data: {
                 violations: result
             }
@@ -311,7 +311,7 @@ router.get('/violations/user/:userId', async (req, res) => {
     } catch (error) {
         console.error('Get violations error:', error);
         res.status(500).json({
-            status: "error",
+            success: false,
             error: {
                 code: "VIOLATIONS_FETCH_ERROR",
                 message: "Failed to fetch user violations",
@@ -327,7 +327,7 @@ router.post('/violations', async (req, res) => {
         const { lotId, province, licensePlate, reason, time } = req.body;
         if (!lotId || !province || !licensePlate || !reason || !time) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "MISSING_REQUIRED_FIELDS",
                     message: "Missing required fields",
@@ -338,7 +338,7 @@ router.post('/violations', async (req, res) => {
 
         if (!isValidDate(time)) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_TIME_FORMAT",
                     message: "Invalid time format",
@@ -348,16 +348,11 @@ router.post('/violations', async (req, res) => {
         }
 
         const result = await appService.createViolation(lotId, province, licensePlate, reason, time);
-        res.status(201).json({
-            status: "success",
-            data: {
-                ticketId: result
-            }
-        });
+        res.status(201).json({result});
     } catch (error) {
         console.error('Create violation error:', error);
         res.status(500).json({
-            status: "error",
+            success: false,
             error: {
                 code: "VIOLATION_CREATE_ERROR",
                 message: "Failed to create violation record",
@@ -374,7 +369,7 @@ router.post('/payments', async (req, res) => {
 
         if (!amount || !paymentMethod || !cardNumber || !userId) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "MISSING_REQUIRED_FIELDS",
                     message: "Missing required fields",
@@ -385,7 +380,7 @@ router.post('/payments', async (req, res) => {
 
         if (amount <= 0) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_AMOUNT",
                     message: "Invalid payment amount",
@@ -396,7 +391,7 @@ router.post('/payments', async (req, res) => {
 
         if (!isValidCardNumber(cardNumber)) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_CARD_NUMBER",
                     message: "Invalid card number",
@@ -408,7 +403,7 @@ router.post('/payments', async (req, res) => {
 
         const result = await appService.createPayment(amount, paymentMethod, cardNumber, userId, lotId, ticketId);
         res.status(201).json({
-            status: "success",
+            success: true,
             data: {
                 payId: result.payId,
                 amount: result.amount,
@@ -418,7 +413,7 @@ router.post('/payments', async (req, res) => {
     } catch (error) {
         console.error('Create payment error:', error);
         res.status(500).json({
-            status: "error",
+            success: false,
             error: {
                 code: "INTERNAL_ERROR",
                 message: "Failed to create payment"
@@ -436,7 +431,7 @@ router.get('/payments/user/:userId', async (req, res) => {
         
         if (!userId) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_USER_ID",
                     message: "User ID is required",
@@ -447,7 +442,7 @@ router.get('/payments/user/:userId', async (req, res) => {
 
         if (startDate && !isValidDate(startDate)) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_START_DATE",
                     message: "Invalid start date format",
@@ -458,7 +453,7 @@ router.get('/payments/user/:userId', async (req, res) => {
 
         if (endDate && !isValidDate(endDate)) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_END_DATE",
                     message: "Invalid end date format",
@@ -469,8 +464,8 @@ router.get('/payments/user/:userId', async (req, res) => {
 
 
         const result = await appService.getUserPayments(userId, startDate, endDate);
-        res.json({
-            status: "success",
+        res.status(200).json({
+            success: true,
             data: {
                 payments: result
             }
@@ -478,7 +473,7 @@ router.get('/payments/user/:userId', async (req, res) => {
     } catch (error) {
         console.error('Get payments error:', error);
         res.status(500).json({
-            status: "error",
+            success: false,
             error: {
                 code: "PAYMENTS_FETCH_ERROR",
                 message: "Failed to fetch user payments",
@@ -495,7 +490,7 @@ router.post('/admin/login', async (req, res) => {
         
         if (!staffId || !password) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "MISSING_CREDENTIALS",
                     message: "Missing credentials",
@@ -506,13 +501,13 @@ router.post('/admin/login', async (req, res) => {
 
         const result = await appService.adminLogin(staffId, password);
         if (result.success) {
-            res.json({
-                status: "success",
+            res.status(201).json({
+                success: true,
                 data: result.data
             });
         } else {
             res.status(401).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_CREDENTIALS",
                     message: "Invalid credentials",
@@ -523,7 +518,7 @@ router.post('/admin/login', async (req, res) => {
     } catch (error) {
         console.error('Admin login error:', error);
         res.status(500).json({
-            status: "error",
+            success: false,
             error: {
                 code: "ADMIN_LOGIN_ERROR",
                 message: "Failed to process admin login",
@@ -542,7 +537,7 @@ router.post('/admin/reports', async (req, res) => {
 
         if (!lotId || !description || !type) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "MISSING_REQUIRED_FIELDS",
                     message: "Missing required fields",
@@ -553,7 +548,7 @@ router.post('/admin/reports', async (req, res) => {
 
         if (!['monthly', 'quarterly', 'incident'].includes(type)) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_REPORT_TYPE",
                     message: "Invalid report type",
@@ -566,7 +561,7 @@ router.post('/admin/reports', async (req, res) => {
 
         const result = await appService.generateReport(lotId, description, type);
         res.status(201).json({
-            status: "success",
+            success: true,
             data: {
                 reportId: result.reportId,
                 dateGenerated: result.dateGenerated
@@ -575,7 +570,7 @@ router.post('/admin/reports', async (req, res) => {
     } catch (error) {
         console.error('Generate report error:', error);
         res.status(500).json({
-            status: "error",
+            success: false,
             error: {
                 code: "REPORT_GENERATION_ERROR",
                 message: "Failed to generate report",

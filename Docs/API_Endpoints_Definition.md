@@ -169,8 +169,8 @@ Endpoint: GET /parkingLots/:lotId
 Response (200 OK):
 
 {
-  "status": "success",
-  "data": {
+  "success": true/false,
+  "parkingLots": {
     "lotId": number,
     "address": "string",
     "capacity": number,
@@ -197,7 +197,7 @@ endDate (optional)
 Response (200 OK):
 
 {
-  "status": "success",
+  "success": true/false,
   "data": {
     "violations": [
       {
@@ -227,7 +227,7 @@ Request Body:
 
 Response (201 Created):
 {
-  "status": "success",
+  "success": true/false,
   "data": {
     "ticketId": number
   }
@@ -247,7 +247,7 @@ Request Body:
 }
 Response (201 Created):
 {
-  "status": "success",
+  "success": true/false,
   "data": {
     "payId": number,
     "amount": number,
@@ -262,7 +262,7 @@ startDate (optional)
 endDate (optional)
 Response (200 OK):
 {
-  "status": "success",
+  "success": true/false,
   "data": {
     "payments": [
       {
@@ -290,7 +290,7 @@ Request Body:
 Response :
 
 {
-  "status": "success",
+  "success": true/false,
   "data": {
     "staffId": number,
     "name": "string",
@@ -311,7 +311,7 @@ Request Body:
 Response (201 Created):
 
 {
-  "status": "success",
+  "success": true/false,
   "data": {
     "reportId": number,
     "dateGenerated": "string" // ISO 8601 date
@@ -321,7 +321,7 @@ Response (201 Created):
 Error Response Format
 In case of errors, the API will return the following structure:
 {
-  "status": "error",
+  "success": true/false,
   "error": {
     "code": "string",      // Error code
     "message": "string",   // Error description

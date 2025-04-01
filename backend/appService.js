@@ -598,24 +598,27 @@ async function getUserViolations(userId, startDate, endDate) {
 async function createViolation(lotId, province, licensePlate, reason, time) {
     const query = `
         INSERT INTO Violations (LOT_ID, PROVINCE, LICENSE_PLATE, REASON, TIME)
-        VALUES (:1, :2, :3, :4, :5)
-        RETURNING TICKET_ID INTO :6
+        VALUES (:lotId, :province, :licensePlate, :reason, :violationTime)
+        RETURNING TICKET_ID INTO :ticketId
     `;
+
     return await withOracleDB(async (connection) => {
-        const result = await connection.execute(query, {
-            bindDefs: [
-                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: lotId },
-                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: province },
-                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: licensePlate },
-                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: reason },
-                { dir: oracledb.BIND_IN, type: oracledb.DATE, val: new Date(time) },
-                { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
-            ]
-        });
-        return result.outBinds[0];
+        const binds = {
+            lotId,
+            province,
+            licensePlate,
+            reason,
+            violationTime: new Date(time),  
+            ticketId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+        };
+
+        const result = await connection.execute(query, binds, { autoCommit: true });
+        return {
+            success:true,
+            ticketId: result.outBinds.ticketId
+        };
     });
 }
-
 //6.1 create payment
 async function createPayment(amount, paymentMethod, cardNumber, userId, lotId, ticketId) {
     const query = `
