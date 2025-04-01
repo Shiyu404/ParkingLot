@@ -131,6 +131,22 @@ router.get('/vehicles/user/:userId', async (req, res) => {
     }
 });
 
+//2.2 Register vehicles
+router.post('/vehicles',async(req,res) => {
+    try{
+        const {userId,province,licensePlate,parkingUntil} = req.body;
+        const result = await appService.registerVehicle(userId,province,licensePlate,parkingUntil);
+        if (result.success) {
+                res.json(result);
+        } else {
+                res.status(400).json({ success: false, message: result.message});
+    }} catch (error) {
+        console.error('Reigister error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+    
+});
+
 // get current occupancy in the parking lot
 router.get('/admin/occupancy', async (req, res) => {
     try {
