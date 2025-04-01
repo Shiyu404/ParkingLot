@@ -363,7 +363,7 @@ async function getUserVisitorPasses(userId) {
                 if (row.PASS_ID) {
                     passes.push({
                         visitorPassId: row.PASS_ID,
-                        validTime: row.VALID_TIME,
+                        validTime: row.VALID_TIME.toISOString().replace('T', ' ').substring(0, 19),
                         status: row.STATUS
                     });
                 }
@@ -404,7 +404,7 @@ async function applyVisitorPasses(userId,validTime) {
                 }
             );
             const visitorPassId = result.outBinds.passId[0];
-            const returnedValidTime = result.outBinds.returnedValidTime[0];
+            const returnedValidTime = new Date(result.outBinds.returnedValidTime[0]);
             const returnedStatus = result.outBinds.returnedStatus[0];
             // Commit the transaction
             await connection.commit();
@@ -413,7 +413,7 @@ async function applyVisitorPasses(userId,validTime) {
                 success: true,
                 user: {
                     visitorPassId: visitorPassId,
-                    validTime:returnedValidTime,
+                    validTime:returnedValidTime.toISOString().replace('T', ' ').substring(0, 19),
                     status: returnedStatus
                 }
             };

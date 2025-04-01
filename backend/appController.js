@@ -161,6 +161,22 @@ router.get('/visitorPasses/user/:userId', async (req, res) => {
     }
 });
 
+// 3.2 apply for visitor passes
+router.post('/visitorPasses',async(req,res) => {
+    try{
+        const {userId,validTime} = req.body;
+        const result = await appService.applyVisitorPasses(userId,validTime);
+        if (result.success) {
+                res.json(result);
+        } else {
+                res.status(400).json({ success: false, message: result.message});
+    }} catch (error) {
+        console.error('Apply visitor passes error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+    
+});
+
 // get current occupancy in the parking lot
 router.get('/admin/occupancy', async (req, res) => {
     try {
