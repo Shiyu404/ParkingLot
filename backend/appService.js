@@ -433,63 +433,6 @@ async function applyVisitorPasses(userId,validTime) {
     });
 }
 
-// Get current occupancy in the parking lot
-async function fetchCurrentOccupancy() {
-    let connection;
-    try {
-        connection = await oracledb.getConnection(dbConfig);
-        const result = await connection.execute(`
-            SELECT 
-                COUNT(*) AS occupied_spaces,
-                (SELECT total_spaces FROM ParkingLot WHERE lot_id = 'A') AS total_spaces
-            FROM ParkingRecord
-            WHERE exit_time IS NULL
-        `);
-        const row = result.rows[0];
-        return {
-            occupiedSpaces: row[0],
-            totalSpaces: row[1],
-            availableSpaces: row[1] - row[0]
-        };
-    } catch (err) {
-        console.error(err);
-        throw err;
-    } finally {
-        if (connection) {
-            try {
-                await connection.close();
-            } catch (err) {
-                console.error(err);
-            }
-        }
-    }
-}
-
-// Get flagged vehicles
-async function fetchFlaggedVehicles() {
-    let connection;
-    try {
-        connection = await oracledb.getConnection(dbConfig);
-        const result = await connection.execute(`
-            SELECT DISTINCT vehicle_plate
-            FROM Violation
-            WHERE resolved = 'N'
-        `);
-        return result.rows.map(row => row[0]);
-    } catch (err) {
-        console.error(err);
-        throw err;
-    } finally {
-        if (connection) {
-            try {
-                await connection.close();
-            } catch (err) {
-                console.error(err);
-            }
-        }
-    }
-}
-
 // 4.1 get information of all parking lots
 async function getAllParkingLots() {
     const query = `
