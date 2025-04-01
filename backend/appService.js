@@ -232,7 +232,7 @@ async function getUserInformation(userId) {
                     userInfo.vehicles.push({
                         province: row.PROVINCE,
                         licensePlate: row.LICENSE_PLATE,
-                        parkingUntil: row.PARKING_UNTIL
+                        parkingUntil: row.PARKING_UNTILreturnedValidTime.toISOString().replace('T', ' ').substring(0, 19)
                     });
                 }
             });
@@ -270,7 +270,7 @@ async function getUserVehiclesInformation(userId) {
                     vehicles.push({
                         province: row.PROVINCE,
                         licensePlate: row.LICENSE_PLATE,
-                        parkingUntil: row.PARKING_UNTIL,
+                        parkingUntil: row.PARKING_UNTILreturnedValidTime.toISOString().replace('T', ' ').substring(0, 19),
                         currentLotId: row.CURRENT_LOT_ID
                     });
                 }
@@ -338,7 +338,7 @@ async function registerVehicle(userId,province,licensePlate,lotId,parkingUntil) 
                 vehicle: {
                     province: searchResult.rows[0].PROVINCE,
                     licensePlate: searchResult.rows[0].LICENSE_PLATE,
-                    parkingUntil: searchResult.rows[0].PARKING_UNTIL
+                    parkingUntil: searchResult.rows[0].PARKING_UNTIL.toISOString().replace('T', ' ').substring(0, 19)
                 }
             };
         }
@@ -545,7 +545,7 @@ async function getParkingLotById(lotId) {
                 .map(row => ({
                     province: row[4],
                     licensePlate: row[5],
-                    parkingUntil: row[6]
+                    parkingUntil: row[6].toISOString().replace('T', ' ').substring(0, 19)
                 }))
         };
         return lot;

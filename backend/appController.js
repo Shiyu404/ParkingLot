@@ -199,19 +199,17 @@ router.get('/admin/violations', async (req, res) => {
 });
 
 // 4.1 get information of all parking lots
-router.get('/parking-lots', async (req, res) => {
+router.get('/parkingLots', async (req, res) => {
     try {
-        const result = await appService.getAllParkingLots();
+        const parkingLots = await appService.getAllParkingLots();
         res.json({
-            status: "success",
-            data: {
-                parkingLots: result
-            }
+            success: true,
+            parkingLots
         });
     } catch (error) {
         console.error('Get parking lots error:', error);
         res.status(500).json({
-            status: "error",
+            success: false,
             error: {
                 code: "PARKING_LOTS_FETCH_ERROR",
                 message: "Failed to fetch parking lots information",
@@ -222,12 +220,12 @@ router.get('/parking-lots', async (req, res) => {
 });
 
 // 4.2 get info of specific parking lot
-router.get('/parking-lots/:lotId', async (req, res) => {
+router.get('/parkingLots/:lotId', async (req, res) => {
     try {
         const { lotId } = req.params;
         if (!lotId) {
             return res.status(400).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "INVALID_LOT_ID",
                     message: "Parking lot ID is required",
@@ -235,15 +233,15 @@ router.get('/parking-lots/:lotId', async (req, res) => {
                 }
             });
         }
-        const result = await appService.getParkingLotById(lotId);
-        if (result) {
+        const parkingLots = await appService.getParkingLotById(lotId);
+        if (parkingLots) {
             res.json({
-                status: "success",
-                data: result
+                success: true,
+                parkingLots
             });
         } else {
             res.status(404).json({
-                status: "error",
+                success: false,
                 error: {
                     code: "LOT_NOT_FOUND",
                     message: "Parking lot not found",
@@ -254,7 +252,7 @@ router.get('/parking-lots/:lotId', async (req, res) => {
     } catch (error) {
         console.error('Get parking lot error:', error);
         res.status(500).json({
-            status: "error",
+            success: false,
             error: {
                 code: "PARKING_LOT_FETCH_ERROR",
                 message: "Failed to fetch parking lot information",

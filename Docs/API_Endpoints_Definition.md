@@ -152,9 +152,8 @@ Response :
 Endpoint: GET /parkingLots
 Response :
 {
-  "status": "success",
-  "data": {
-    "parkingLots": [
+  "success": true/false,
+  "parkingLots": [
       {
         "lotId": number,
         "address": "string",
@@ -163,8 +162,8 @@ Response :
         "currentRemain": number
       }
     ]
-  }
 }
+
 4.2 Get Specific Parking Lot
 Endpoint: GET /parkingLots/:lotId
 Response (200 OK):
