@@ -755,8 +755,6 @@ async function generateReport(lotId, description, type) {
 
 module.exports = {
     testOracleConnection,
-    fetchCurrentOccupancy,
-    fetchFlaggedVehicles,
     loginUser,
     registerUser,
     getUserInformation,
