@@ -100,6 +100,7 @@ async function testOracleConnection() {
 //     });
 // }
 
+//1.1 Log in
 async function loginUser(phone, password) {
     return await withOracleDB(async (connection) => {
         const result = await connection.execute(
@@ -130,6 +131,7 @@ async function loginUser(phone, password) {
     });
 }
 
+//1.2 Register user
 async function registerUser(name,phone,password,userType,unitNumber,hostInformation,role) {
     return await withOracleDB(async (connection) => {
         const result = await connection.execute(
@@ -162,12 +164,8 @@ async function registerUser(name,phone,password,userType,unitNumber,hostInformat
                 success: true,
                 user: {
                     id: user.ID,
-                    phone: user.PHONE,
                     name: user.NAME,
-                    role: user.ROLE,
-                    userType: user.USER_TYPE,
-                    unitNumber: user.UNIT_NUMBER,
-                    hostInformation: user.HOST_INFORMATION
+                    userType: user.USER_TYPE
                 }
             };
         }
@@ -181,6 +179,14 @@ async function registerUser(name,phone,password,userType,unitNumber,hostInformat
     });
 }
 
+// 1.3 Get user's information
+async function getUserInformation(userId) {
+    return await withOracleDB(async (connection) => {
+        const result = await connection.execute(
+            `SELECT `
+        )
+    })
+}
 // Get current occupancy in the parking lot
 async function fetchCurrentOccupancy() {
     let connection;
