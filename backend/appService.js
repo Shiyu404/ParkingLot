@@ -217,6 +217,46 @@ async function getUserInformation(userId) {
         return { success: false, message: "Get information error" };
     });
 }
+
+// 2.1 Get user's vehicles information
+async function getUserVehiclesInformation(userId) {
+    return await withOracleDB(async (connection) => {
+        const userResult = await connection.execute(
+            `SELECT * FROM Users u
+            WHERE u.ID = :userId`,
+            {userId},
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (userResult.rows.length <= 0) {
+            return { success: false, message: "User does not exist"};
+        }
+        const vehicleResult = await connection.execute(
+            `SELECT * FROM Vehicle v
+            WHERE v.USER_ID = :userId`,
+            {userId},
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const vehicles = [];
+        if (vehicleResult.rows.length > 0) {
+            vehicleResult.rows.forEach(row => {
+                if (row.PROVINCE && row.LICENSE_PLATE) {
+                    vehicles.push({
+                        province: row.PROVINCE,
+                        licensePlate: row.LICENSE_PLATE,
+                        parkingUntil: row.PARKING_UNTIL,
+                        currentLotId: row.CURRENT_LOT_ID
+                    });
+                }
+            });
+
+            return { success: true, vehicles:vehicles };
+        } 
+        return { success: false, message: "User does not have vehicles"};
+    }).catch((error) => {
+        return { success: false, message: "Get information error" };
+    });
+}
+
 // Get current occupancy in the parking lot
 async function fetchCurrentOccupancy() {
     let connection;
@@ -541,6 +581,7 @@ module.exports = {
     loginUser,
     registerUser,
     getUserInformation,
+    getUserVehiclesInformation,
     getAllParkingLots,
     getParkingLotById,
     getUserViolations,

@@ -51,20 +51,20 @@ Response (200 OK):
 
 {
   "status": "success",
-  "user": {
+  "userInfo": {
     "userId": number,
     "name": "string",
     "phone": "string",
     "userType": "resident" | "visitor",
     "unitNumber": number,
     "hostInformation": "string",
-  },
-  "vehicles": 
-      {
+    // Pay attention that a user may have many vehicles
+    "vehicles": {
         "province": "string",
         "licensePlate": "string",
         "parkingUntil": "string" // ISO 8601 date
-      }
+  }
+  }
 }
 
 2. Vehicle Module (/vehicles)

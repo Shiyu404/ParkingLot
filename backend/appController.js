@@ -115,6 +115,22 @@ router.get('/users/:userId', async (req, res) => {
     }
 });
 
+//2.1 Get user's vehicles information
+router.get('/vehicles/user/:userId', async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId, 10);
+        const result = await appService.getUserVehiclesInformation(userId);
+        if (result.success) {
+                res.json(result);
+        } else {
+                res.status(400).json({ success: false, message: result.message});
+        }
+    } catch (error) {
+        console.error('Get information error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // get current occupancy in the parking lot
 router.get('/admin/occupancy', async (req, res) => {
     try {
