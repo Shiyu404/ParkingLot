@@ -1,6 +1,8 @@
 const express = require('express');
 
 const appService = require('./appService');
+const loadEnvFile = require('./utils/envUtil');
+const envVariables = loadEnvFile('./.env');
 
 const router = express.Router();
 
@@ -596,6 +598,84 @@ router.post('/visitors/register', async (req, res) => {
         res.status(500).json({
             success: false,
             message: '服务器错误'
+        });
+    }
+});
+
+// 获取所有违规记录
+router.get('/violations', async (req, res) => {
+    try {
+        console.log('Fetching all violations');
+        
+        // 调用服务层方法获取所有违规记录
+        const result = await appService.getAllViolations();
+        
+        if (result.success) {
+            // 处理字段名差异，确保一致的API响应
+            const violations = result.violations.map(row => ({
+                ticketId: row.TICKETID || row.ticketId,
+                reason: row.REASON || row.reason,
+                time: row.TIME || row.time,
+                lotId: row.LOTID || row.lotId,
+                province: row.PROVINCE || row.province,
+                licensePlate: row.LICENSEPLATE || row.licensePlate,
+                status: row.STATUS || row.status
+            }));
+            
+            console.log(`Found ${violations.length} violations`);
+            res.status(200).json({
+                success: true,
+                violations: violations
+            });
+        } else {
+            // 处理服务层返回的错误
+            throw new Error(result.message);
+        }
+    } catch (error) {
+        console.error('Error fetching violations:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch violations data: ' + error.message
+        });
+    }
+});
+
+// 更新违规记录状态
+router.put('/violations/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        
+        if (!id || !status) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required parameters'
+            });
+        }
+        
+        // 调用服务层方法更新状态
+        const result = await appService.updateViolationStatus(id, status);
+        
+        if (result.success) {
+            console.log(`Updated violation #${id} status to ${status}`);
+            res.status(200).json(result);
+        } else {
+            // 如果记录未找到，返回404
+            if (result.message === 'Violation record not found') {
+                res.status(404).json(result);
+            } else if (result.message === 'Invalid status value') {
+                // 如果状态值无效，返回400
+                res.status(400).json(result);
+            } else {
+                // 其他错误返回500
+                res.status(500).json(result);
+            }
+        }
+    } catch (error) {
+        console.error('Error updating violation status:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update violation status: ' + error.message
         });
     }
 });

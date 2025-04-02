@@ -1143,6 +1143,113 @@ async function verifyVehicle(plate, region, lotId) {
     }
 }
 
+// 获取所有违规记录
+async function getAllViolations() {
+    let connection;
+    try {
+        connection = await oracledb.getConnection(dbConfig);
+        
+        const query = `
+            SELECT 
+                v.TICKET_ID as TICKETID,
+                v.REASON,
+                v.TIME,
+                v.LOT_ID as LOTID,
+                v.PROVINCE,
+                v.LICENSE_PLATE as LICENSEPLATE,
+                v.STATUS
+            FROM Violations v
+            ORDER BY v.TIME DESC
+        `;
+
+        const result = await connection.execute(
+            query,
+            {},
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        // 格式化响应
+        return {
+            success: true,
+            violations: result.rows
+        };
+    } catch (error) {
+        console.error('Error fetching all violations:', error);
+        return {
+            success: false,
+            message: 'Database error while fetching violations: ' + error.message
+        };
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+                console.log('Database connection closed successfully in getAllViolations');
+            } catch (err) {
+                console.error('Error closing database connection in getAllViolations:', err);
+            }
+        }
+    }
+}
+
+// 更新违规记录状态
+async function updateViolationStatus(ticketId, newStatus) {
+    let connection;
+    try {
+        // 验证状态值
+        const validStatuses = ['pending', 'paid', 'appealed'];
+        if (!validStatuses.includes(newStatus)) {
+            return {
+                success: false,
+                message: 'Invalid status value'
+            };
+        }
+
+        connection = await oracledb.getConnection(dbConfig);
+        
+        const query = `
+            UPDATE Violations
+            SET STATUS = :status
+            WHERE TICKET_ID = :id
+        `;
+
+        const result = await connection.execute(
+            query,
+            {
+                status: newStatus,
+                id: parseInt(ticketId, 10)
+            },
+            { autoCommit: true }
+        );
+
+        if (result.rowsAffected > 0) {
+            return {
+                success: true,
+                message: `Status updated to ${newStatus}`
+            };
+        } else {
+            return {
+                success: false,
+                message: 'Violation record not found'
+            };
+        }
+    } catch (error) {
+        console.error('Error updating violation status:', error);
+        return {
+            success: false,
+            message: 'Database error while updating violation status: ' + error.message
+        };
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+                console.log('Database connection closed successfully in updateViolationStatus');
+            } catch (err) {
+                console.error('Error closing database connection in updateViolationStatus:', err);
+            }
+        }
+    }
+}
+
 module.exports = {
     testOracleConnection,
     loginUser,
@@ -1163,5 +1270,7 @@ module.exports = {
     generateReport,
     getUserVisitorPassQuota,
     registerVisitor,
-    verifyVehicle
+    verifyVehicle,
+    getAllViolations,
+    updateViolationStatus
 };
