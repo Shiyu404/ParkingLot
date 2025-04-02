@@ -4,7 +4,7 @@ export const API_BASE_URL = '/api';  // Use /api prefix to match Vite proxy conf
 // API Endpoints
 export const API_ENDPOINTS = {
     // Authentication related
-    login: '/api/users/login',  // Use /api prefix for Vite proxy
+    login: '/api/users/login',  // 添加/api前缀以匹配Vite代理配置
     register: '/api/users/register',
     
     // Admin related
@@ -14,6 +14,10 @@ export const API_ENDPOINTS = {
     // Parking lot related
     getAllParkingLots: '/api/parking-lots',
     getParkingLotById: (lotId) => `/api/parking-lots/${lotId}`,
+    getParkingLotNames: '/api/parking-lots-names',
+    
+    // Visitor related
+    registerVisitor: '/api/visitors/register',
     
     // Violation records related
     getUserViolations: (userId) => `/api/violations/user/${userId}`,

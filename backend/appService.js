@@ -232,7 +232,7 @@ async function getUserInformation(userId) {
                     userInfo.vehicles.push({
                         province: row.PROVINCE,
                         licensePlate: row.LICENSE_PLATE,
-                        parkingUntil: row.PARKING_UNTILreturnedValidTime.toISOString().replace('T', ' ').substring(0, 19)
+                        parkingUntil: row.PARKING_UNTIL.toISOString().replace('T', ' ').substring(0, 19)
                     });
                 }
             });
@@ -270,7 +270,7 @@ async function getUserVehiclesInformation(userId) {
                     vehicles.push({
                         province: row.PROVINCE,
                         licensePlate: row.LICENSE_PLATE,
-                        parkingUntil: row.PARKING_UNTILreturnedValidTime.toISOString().replace('T', ' ').substring(0, 19),
+                        parkingUntil: row.PARKING_UNTIL.toISOString().replace('T', ' ').substring(0, 19),
                         currentLotId: row.CURRENT_LOT_ID
                     });
                 }
@@ -452,9 +452,9 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                 return { success: false, message: 'Invalid visitor plate format' };
             }
 
-            // 计算停车结束时间
+            // 计算停车结束时间（默认24小时，可以根据需要修改）
             const parkingUntil = new Date();
-            parkingUntil.setHours(parkingUntil.getHours() + hours);
+            parkingUntil.setHours(parkingUntil.getHours() + 24); // 添加24小时
             const parkingUntilStr = parkingUntil.toISOString().replace('T', ' ').substring(0, 19);
             
             // 1. 创建访客通行证
@@ -661,8 +661,8 @@ async function getAllParkingLots() {
         return result.rows.map(row => ({
             lotId: row[0],
             capacity: row[1],
-            currentOccupancy: row[2],
-            currentRemain: row[3],
+            currentRemain: row[2],
+            currentOccupancy: row[3],
             currentVehicles: row[4]
         }));
     });
@@ -690,8 +690,8 @@ async function getParkingLotById(lotId) {
         const lot = {
             lotId: result.rows[0][0],
             capacity: result.rows[0][1],
-            currentOccupancy: result.rows[0][2],
-            currentRemain: result.rows[0][3],
+            currentRemain: result.rows[0][2],
+            currentOccupancy: result.rows[0][3],
             vehicles: result.rows
                 .filter(row => row[4] && row[5] && row[6])
                 .map(row => ({
@@ -900,10 +900,141 @@ async function generateReport(lotId, description, type) {
     });
 }
 
+async function getAllParkingLotNames() {
+    const query = `
+        SELECT 
+            LOT_ID as lotId,
+            LOT_NAME as lotName,
+            ADDRESS as address
+        FROM ParkingLot
+        ORDER BY LOT_ID
+    `;
+    return await withOracleDB(async (connection) => {
+        try {
+            const result = await connection.execute(query, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
+            return {
+                success: true,
+                parkingLots: result.rows
+            };
+        } catch (error) {
+            console.error('Error fetching parking lot names:', error);
+            return {
+                success: false,
+                message: 'Failed to fetch parking lot names'
+            };
+        }
+    });
+}
 
-
-
-
+// 新增函数：注册访客信息
+async function registerVisitor(fullName, phone, unitToVisit, region, licensePlate, parkingLotId) {
+    return await withOracleDB(async (connection) => {
+        try {
+            // 生成一个随机密码（在实际应用中应该让用户设置或使用更安全的方式）
+            const password = Math.random().toString(36).substring(2, 10);
+            
+            // 检查电话号码是否已存在
+            const phoneCheck = await connection.execute(
+                `SELECT ID FROM Users WHERE PHONE = :phone`,
+                { phone },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            if (phoneCheck.rows.length > 0) {
+                return { 
+                    success: false, 
+                    message: '该电话号码已经被注册' 
+                };
+            }
+            
+            // 设置访客主机信息
+            const hostInformation = `Visiting Unit ${unitToVisit}`;
+            
+            // 1. 插入到Users表中
+            const userResult = await connection.execute(
+                `INSERT INTO Users (
+                    PHONE, 
+                    PASSWORD, 
+                    NAME, 
+                    ROLE, 
+                    USER_TYPE,
+                    HOST_INFORMATION
+                ) VALUES (
+                    :phone,
+                    :password,
+                    :name,
+                    'user',
+                    'visitor',
+                    :hostInformation
+                ) RETURNING ID INTO :userId`,
+                {
+                    phone,
+                    password,
+                    name: fullName,
+                    hostInformation,
+                    userId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+                }
+            );
+            
+            if (!userResult.outBinds.userId) {
+                return { success: false, message: '创建用户记录失败' };
+            }
+            
+            const userId = userResult.outBinds.userId;
+            
+            // 计算停车结束时间（默认24小时，可以根据需要修改）
+            const parkingUntil = new Date();
+            parkingUntil.setHours(parkingUntil.getHours() + 24); // 添加24小时
+            const parkingUntilStr = parkingUntil.toISOString().replace('T', ' ').substring(0, 19);
+            
+            // 2. 插入到Vehicles表中
+            const vehicleResult = await connection.execute(
+                `INSERT INTO Vehicles (
+                    USER_ID, 
+                    PROVINCE, 
+                    LICENSE_PLATE, 
+                    CURRENT_LOT_ID,
+                    PARKING_UNTIL
+                ) VALUES (
+                    :userId, 
+                    :province, 
+                    :licensePlate,
+                    :parkingLotId,
+                    TO_TIMESTAMP(:parkingUntil, 'YYYY-MM-DD HH24:MI:SS')
+                )`,
+                {
+                    userId,
+                    province: region,
+                    licensePlate,
+                    parkingLotId,
+                    parkingUntil: parkingUntilStr
+                }
+            );
+            
+            // 提交事务
+            await connection.commit();
+            
+            return {
+                success: true,
+                message: '访客信息已成功记录',
+                user: {
+                    id: userId,
+                    name: fullName,
+                    phone,
+                    unitToVisit,
+                    region,
+                    licensePlate,
+                    parkingLotId,
+                    parkingUntil: parkingUntilStr
+                }
+            };
+            
+        } catch (error) {
+            console.error('Register visitor error:', error);
+            return { success: false, message: '服务器错误，访客注册失败' };
+        }
+    });
+}
 
 module.exports = {
     testOracleConnection,
@@ -916,11 +1047,13 @@ module.exports = {
     applyVisitorPasses,
     getAllParkingLots,
     getParkingLotById,
+    getAllParkingLotNames,
     getUserViolations,
     createViolation,
     createPayment,
     getUserPayments,
     adminLogin,
     generateReport,
-    getUserVisitorPassQuota
+    getUserVisitorPassQuota,
+    registerVisitor
 };

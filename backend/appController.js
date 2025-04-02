@@ -202,7 +202,7 @@ router.get('/visitorPasses/quota/:userId', async (req, res) => {
 });
 
 // 4.1 get information of all parking lots
-router.get('/parkingLots', async (req, res) => {
+router.get('/parking-lots', async (req, res) => {
     try {
         const parkingLots = await appService.getAllParkingLots();
         res.status(200).json({
@@ -219,7 +219,7 @@ router.get('/parkingLots', async (req, res) => {
 });
 
 // 4.2 get info of specific parking lot
-router.get('/parkingLots/:lotId', async (req, res) => {
+router.get('/parking-lots/:lotId', async (req, res) => {
     try {
         const { lotId } = req.params;
         if (!lotId) {
@@ -480,6 +480,77 @@ router.post('/admin/reports', async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to generate report"
+        });
+    }
+});
+
+// 新增路由：获取所有停车场的名称和ID
+router.get('/parking-lots-names', async (req, res) => {
+    try {
+        const result = await appService.getAllParkingLotNames();
+        if (result.success) {
+            res.status(200).json(result);
+        } else {
+            res.status(400).json({ success: false, message: result.message });
+        }
+    } catch (error) {
+        console.error('Get parking lot names error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// 新增路由：注册访客信息
+router.post('/visitors/register', async (req, res) => {
+    try {
+        const { fullName, phone, unitToVisit, region, licensePlate, parkingLotId } = req.body;
+        
+        // 验证所有必填字段
+        if (!fullName || !phone || !unitToVisit || !region || !licensePlate || !parkingLotId) {
+            return res.status(400).json({
+                success: false,
+                message: '所有字段都是必填的'
+            });
+        }
+        
+        // 验证电话号码格式（可选）
+        if (!/^\d{10,15}$/.test(phone)) {
+            return res.status(400).json({
+                success: false,
+                message: '请输入有效的电话号码'
+            });
+        }
+        
+        // 验证单元号是否为数字（可选）
+        const unitNumber = parseInt(unitToVisit, 10);
+        if (isNaN(unitNumber)) {
+            return res.status(400).json({
+                success: false,
+                message: '单元号必须是数字'
+            });
+        }
+        
+        const result = await appService.registerVisitor(
+            fullName, 
+            phone, 
+            unitToVisit, 
+            region, 
+            licensePlate, 
+            parkingLotId
+        );
+        
+        if (result.success) {
+            res.status(201).json(result);
+        } else {
+            res.status(400).json({
+                success: false,
+                message: result.message
+            });
+        }
+    } catch (error) {
+        console.error('Register visitor error:', error);
+        res.status(500).json({
+            success: false,
+            message: '服务器错误'
         });
     }
 });
