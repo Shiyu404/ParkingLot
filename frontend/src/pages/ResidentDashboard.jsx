@@ -77,8 +77,8 @@ export default function ResidentDashboard() {
     } catch (err) {
       console.error('Error fetching visitor passes:', err);
       toast({
-        title: "错误",
-        description: "获取通行证数据失败",
+        title: "Error",
+        description: "Failed to fetch visitor passes data",
         variant: "destructive",
       });
     } finally {
@@ -87,23 +87,13 @@ export default function ResidentDashboard() {
   };
   
   const processVisitorPasses = (passes) => {
-    // 处理活跃通行证
-    const active = passes.filter(pass => {
-      if (!pass.status || pass.status !== 'active') return false;
-      // 如果没有 validTime，使用 createdAt 加上 hours 来计算
-      if (!pass.validTime && pass.createdAt && pass.hours) {
-        const createdAt = new Date(pass.createdAt);
-        const validTime = new Date(createdAt.getTime() + pass.hours * 60 * 60 * 1000);
-        pass.validTime = validTime.toISOString();
-      }
-      const validTime = new Date(pass.validTime);
-      return validTime > new Date();
-    });
+    // Process active passes
+    const active = passes.filter(pass => pass.status === 'active');
     
-    // 转换活跃通行证数据用于显示
+    // Convert active passes data for display
     const activeForDisplay = active.map(pass => ({
       id: pass.visitorPassId,
-      plate: pass.visitorPlate || pass.plate || 'Not assigned',
+      plate: pass.plate || 'Not assigned',
       timeRemaining: formatTimeRemaining(pass.validTime),
       passType: getPassTypeFromHours(pass.hours || 24),
       validTime: pass.validTime
@@ -112,33 +102,27 @@ export default function ResidentDashboard() {
     console.log('Active visitors:', activeForDisplay);
     setActiveVisitors(activeForDisplay);
     
-    // 处理历史记录
-    const history = passes.map(pass => {
-      // 如果没有 validTime，使用 createdAt 加上 hours 来计算
-      if (!pass.validTime && pass.createdAt && pass.hours) {
-        const createdAt = new Date(pass.createdAt);
-        const validTime = new Date(createdAt.getTime() + pass.hours * 60 * 60 * 1000);
-        pass.validTime = validTime.toISOString();
-      }
-
-      return {
+    // Process history records
+    const history = passes
+      .filter(pass => pass.status === 'expired')
+      .map(pass => ({
         passId: pass.visitorPassId,
         date: pass.createdAt ? format(new Date(pass.createdAt), 'MMM d, yyyy') : 'Unknown',
-        validTime: pass.validTime,
-        status: pass.status,
-        plate: pass.visitorPlate || pass.plate || 'Not assigned',
-        passType: getPassTypeFromHours(pass.hours || 24)
-      };
+        plate: pass.plate || 'Not assigned',
+        passType: getPassTypeFromHours(pass.hours || 24),
+        status: pass.status
+      }));
+    
+    // Sort by date, newest first
+    history.sort((a, b) => {
+      if (!a.date || !b.date) return 0;
+      return new Date(b.date) - new Date(a.date);
     });
     
-    history.sort((a, b) => {
-      if (!a.validTime || !b.validTime) return 0;
-      return new Date(b.validTime) - new Date(a.validTime);
-    });
     console.log('Pass history:', history);
     setPassHistory(history);
     
-    // 更新通行证配额
+    // Update pass quota
     calculatePassQuota(passes);
   };
   
@@ -153,17 +137,17 @@ export default function ResidentDashboard() {
       const now = new Date();
       const diff = validTime - now;
       
-      if (diff <= 0) return '已过期';
+      if (diff <= 0) return 'Expired';
       
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       
       if (hours > 0) {
-        return `${hours}小时${minutes}分钟`;
+        return `${hours}h ${minutes}m remaining`;
       }
-      return `${minutes}分钟`;
+      return `${minutes}m remaining`;
     } catch (e) {
-      return '未知';
+      return 'Unknown';
     }
   };
   
@@ -171,12 +155,12 @@ export default function ResidentDashboard() {
   const calculatePassQuota = (passes) => {
     const passCountByType = {};
     
-    // 初始化计数器
+    // Initialize counters
     DEFAULT_PASS_TYPES.forEach(type => {
       passCountByType[type.type] = 0;
     });
     
-    // 统计活跃通行证
+    // Count active passes
     passes.forEach(pass => {
       if (pass.status === 'active') {
         const passType = getPassTypeFromHours(pass.hours || 24);
@@ -186,7 +170,7 @@ export default function ResidentDashboard() {
       }
     });
     
-    // 计算剩余配额
+    // Calculate remaining quota
     const quotaWithRemaining = DEFAULT_PASS_TYPES.map(type => ({
       id: type.id,
       type: type.type,
@@ -200,8 +184,8 @@ export default function ResidentDashboard() {
   const handleUsePass = async (passType) => {
     if (!licensePlate || !regionCode) {
       toast({
-        title: "缺少信息",
-        description: "请填写州/省和车牌号",
+        title: "Missing Information",
+        description: "Please fill in the province/state and license plate",
         variant: "destructive",
       });
       return;
@@ -238,25 +222,25 @@ export default function ResidentDashboard() {
 
       if (data.success) {
         toast({
-          title: "成功",
-          description: `已为车牌 ${visitorPlate} 创建${selectedPass.type}通行证`,
+          title: "Success",
+          description: `Created ${selectedPass.type} pass for plate ${visitorPlate}`,
         });
-    setLicensePlate('');
-    setRegionCode('');
+        setLicensePlate('');
+        setRegionCode('');
         // 立即重新获取数据
         await fetchVisitorPasses();
       } else {
         toast({
-          title: "错误",
-          description: data.message || "创建访客通行证失败",
+          title: "Error",
+          description: data.message || "Failed to create visitor pass",
           variant: "destructive",
         });
       }
     } catch (err) {
       console.error('Error applying visitor pass:', err);
       toast({
-        title: "错误",
-        description: "创建访客通行证失败",
+        title: "Error",
+        description: "Failed to create visitor pass",
         variant: "destructive",
       });
     } finally {
@@ -294,12 +278,19 @@ export default function ResidentDashboard() {
                 </div>
               ) : (
                 activeVisitors.map(visitor => (
-                  <VisitorPass
-                    key={visitor.id}
-                    plate={visitor.plate}
-                    timeRemaining={visitor.timeRemaining}
-                    passType={visitor.passType}
-                  />
+                  <div key={visitor.id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="font-medium">{visitor.plate}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {visitor.passType}
+                        </div>
+                      </div>
+                      <div className="text-sm text-green-600">
+                        {visitor.timeRemaining}
+                      </div>
+                    </div>
+                  </div>
                 ))
               )}
               </div>
@@ -311,7 +302,7 @@ export default function ResidentDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
-              Create New Pass
+              Use a Pass
             </CardTitle>
             <CardDescription>
               Issue a new visitor pass
@@ -319,31 +310,31 @@ export default function ResidentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-                      <div className="space-y-2">
-                <Label>州/省</Label>
-                <Select value={regionCode} onValueChange={setRegionCode}>
-                          <SelectTrigger>
-                    <SelectValue placeholder="选择州/省" />
-                          </SelectTrigger>
-                  <SelectContent>
-                            {northAmericanRegions.map(region => (
-                              <SelectItem key={region.value} value={region.value}>
-                                {region.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                <Label>车牌号</Label>
-                        <Input 
-                          value={licensePlate}
-                          onChange={(e) => setLicensePlate(e.target.value)}
-                  placeholder="输入车牌号"
-                        />
-                      </div>
               <div className="space-y-2">
-                <Label>通行证类型</Label>
+                <Label>Province/State</Label>
+                <Select value={regionCode} onValueChange={setRegionCode}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select province/state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {northAmericanRegions.map(region => (
+                      <SelectItem key={region.value} value={region.value}>
+                        {region.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>License Plate</Label>
+                <Input 
+                  value={licensePlate}
+                  onChange={(e) => setLicensePlate(e.target.value)}
+                  placeholder="Enter license plate"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Pass Type</Label>
                 <div className="grid gap-2">
                   {visitorPasses.map(pass => (
                     <Button
@@ -360,10 +351,10 @@ export default function ResidentDashboard() {
                     </Button>
                   ))}
                 </div>
+              </div>
             </div>
-            </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Pass Usage */}
@@ -373,12 +364,15 @@ export default function ResidentDashboard() {
             <Calendar className="h-5 w-5" />
             Recent Pass Usage
           </CardTitle>
+          <CardDescription>
+            Expired visitor passes history
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {passHistory.length === 0 ? (
               <div className="text-center text-muted-foreground">
-                No pass usage history
+                No expired passes history
               </div>
             ) : (
               <div className="space-y-4">
@@ -395,12 +389,10 @@ export default function ResidentDashboard() {
                         {pass.date} - {pass.passType}
                       </div>
                     </div>
-                    <div className={`text-sm ${
-                      pass.status === 'active' ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <div className="text-sm text-red-600">
                       {pass.status}
                     </div>
-                </div>
+                  </div>
                 ))}
               </div>
             )}

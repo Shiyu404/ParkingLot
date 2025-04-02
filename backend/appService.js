@@ -380,7 +380,7 @@ async function getUserVisitorPasses(userId) {
                     return {
                         visitorPassId: row.PASS_ID,
                         validTime: validTime.toISOString().replace('T', ' ').substring(0, 19),
-                        status: row.CURRENT_STATUS, // 使用计算出的当前状态
+                        status: row.CURRENT_STATUS,
                         createdAt: row.CREATED_AT.toISOString().replace('T', ' ').substring(0, 19),
                         plate: row.VISITOR_PLATE || 'Not assigned'
                     };

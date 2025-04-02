@@ -173,38 +173,38 @@ CREATE TABLE VisitorPasses (
 
 -- Insert visitor passes for the first resident user (User ID 2)
 -- 8 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME) 
-VALUES (2, 8);
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (2, 8, 'BC-AB123CD');
 
 -- 24 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME) 
-VALUES (2, 24);
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (2, 24, 'WA-KDA1233');
 
 -- Weekend pass (48 hours) - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME) 
-VALUES (2, 48);
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (2, 48, 'CA-FSD1234');
 
 -- 8 hour pass - expired
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) 
-VALUES (2, 8, 'expired');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (2, 0, 'expired', 'ON-OFN2312');
 
 -- Insert visitor passes for the second resident user (User ID 3)
 -- 8 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME) 
-VALUES (3, 8);
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (3, 8, 'NY-FAB7680');
 
 -- 24 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME) 
-VALUES (3, 24);
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (3, 24, 'AB-CD123AD');
 
 -- Insert visitor passes for the third resident user (User ID 4)
 -- Weekend pass (48 hours) - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME) 
-VALUES (4, 48);
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (4, 48, 'SK-FA123DF');
 
 -- 8 hour pass - expired
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) 
-VALUES (4, 8, 'expired');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (4, 0, 'expired', 'MO-1A3489');
 
 -- Create Violations table
 CREATE TABLE Violations (

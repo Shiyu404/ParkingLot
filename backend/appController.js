@@ -149,6 +149,8 @@ router.get('/visitorPasses/user/:userId', async (req, res) => {
     try {
         const userId = parseInt(req.params.userId, 10);
         const result = await appService.getUserVisitorPasses(userId);
+        console.log("userID: ", userId);
+        console.log("result", result);
         if (result.success) {
                 res.status(200).json(result);
         } else {
