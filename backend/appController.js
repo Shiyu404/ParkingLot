@@ -163,8 +163,15 @@ router.get('/visitorPasses/user/:userId', async (req, res) => {
 // 3.2 apply for visitor passes
 router.post('/visitorPasses',async(req,res) => {
     try{
-        const {userId,validTime} = req.body;
-        const result = await appService.applyVisitorPasses(userId,validTime);
+        const {userId, hours, visitorPlate} = req.body;
+        if (!userId || !hours || !visitorPlate) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Missing required fields: userId, hours, visitorPlate"
+            });
+        }
+        
+        const result = await appService.applyVisitorPasses(userId, hours, visitorPlate);
         if (result.success) {
                 res.status(201).json(result);
         } else {
@@ -174,6 +181,22 @@ router.post('/visitorPasses',async(req,res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
     
+});
+
+// 3.3 get user's visitor pass quota and usage history
+router.get('/visitorPasses/quota/:userId', async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId, 10);
+        const result = await appService.getUserVisitorPassQuota(userId);
+        if (result.success) {
+            res.status(200).json(result);
+        } else {
+            res.status(400).json({ success: false, message: result.message });
+        }
+    } catch (error) {
+        console.error('Get visitor pass quota error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // 4.1 get information of all parking lots

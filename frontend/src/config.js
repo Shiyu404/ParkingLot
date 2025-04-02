@@ -4,8 +4,8 @@ export const API_BASE_URL = '/api';  // 使用 /api 前缀以匹配 Vite 代理�
 // API Endpoints
 export const API_ENDPOINTS = {
     // 认证相关
-    login: '/api/login',
-    register: '/api/users/register',  // 修改为与后端匹配的路径
+    login: '/api/users/login',  // 使用/api前缀让Vite代理处理请求
+    register: '/api/users/register',
     
     // 管理员相关
     occupancy: '/api/admin/occupancy',
@@ -21,4 +21,9 @@ export const API_ENDPOINTS = {
     
     // 支付相关
     createPayment: '/api/payments',
+    
+    // 访客通行证相关
+    getUserVisitorPasses: (userId) => `/api/visitorPasses/user/${userId}`,
+    createVisitorPass: '/api/visitorPasses',
+    getUserVisitorPassQuota: (userId) => `/api/visitorPasses/quota/${userId}`,
 }; 
