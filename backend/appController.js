@@ -176,28 +176,6 @@ router.post('/visitorPasses',async(req,res) => {
     
 });
 
-// get current occupancy in the parking lot
-router.get('/admin/occupancy', async (req, res) => {
-    try {
-        const result = await appService.fetchCurrentOccupancy();
-        res.json(result);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Failed to get occupancy data' });
-    }
-});
-
-// get the flagged vehicles
-router.get('/admin/violations', async (req, res) => {
-    try {
-        const result = await appService.fetchFlaggedVehicles();
-        res.json({ vehicles: result });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Failed to get flagged vehicles' });
-    }
-});
-
 // 4.1 get information of all parking lots
 router.get('/parkingLots', async (req, res) => {
     try {
