@@ -14,7 +14,6 @@ export const API_ENDPOINTS = {
     // Parking lot related
     getAllParkingLots: '/api/parking-lots',
     getParkingLotById: (lotId) => `/api/parking-lots/${lotId}`,
-    getParkingLotNames: '/api/parking-lots-names',
     
     // Visitor related
     registerVisitor: '/api/visitors/register',
@@ -30,4 +29,7 @@ export const API_ENDPOINTS = {
     getUserVisitorPasses: (userId) => `/api/visitorPasses/user/${userId}`,
     createVisitorPass: '/api/visitorPasses',
     getUserVisitorPassQuota: (userId) => `/api/visitorPasses/quota/${userId}`,
+    verifyVehicle: (plate, region, lotId) =>
+        `/api/verify-vehicle?plate=${encodeURIComponent(plate)}&region=${encodeURIComponent(region)}&lotId=${encodeURIComponent(lotId)}`,
+    
 }; 

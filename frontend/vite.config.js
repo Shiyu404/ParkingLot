@@ -14,40 +14,45 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:50038',
+        target: 'http://localhost:55001',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        rewrite: (path) => {
+          console.log('【代理调试】原始路径:', path);
+          const rewritten = path.replace(/^\/api/, '');
+          console.log('【代理调试】重写后路径:', rewritten);
+          return rewritten;
+        },
         configure: (proxy) => {
           proxy.on('error', (err) => {
-            console.log('Proxy error:', err);
+            console.log('【代理调试】代理错误:', err);
           });
           proxy.on('proxyReq', (proxyReq, req) => {
-            console.log('Sending Request to the Target:', req.method, req.url);
-            console.log('Request headers:', proxyReq.getHeaders());
+            console.log('【代理调试】发送请求到目标:', req.method, req.url);
+            console.log('【代理调试】请求头:', proxyReq.getHeaders());
             if (req.body) {
               const bodyData = JSON.stringify(req.body);
-              console.log('Request body:', bodyData);
+              console.log('【代理调试】请求体:', bodyData);
               proxyReq.setHeader('Content-Type', 'application/json');
               proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
               proxyReq.write(bodyData);
             }
           });
           proxy.on('proxyRes', (proxyRes, req) => {
-            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
-            console.log('Response headers:', proxyRes.headers);
+            console.log('【代理调试】收到目标响应:', proxyRes.statusCode, req.url);
+            console.log('【代理调试】响应头:', proxyRes.headers);
             let body = '';
             proxyRes.on('data', (chunk) => {
               body += chunk;
             });
             proxyRes.on('end', () => {
-              console.log('Response body:', body);
+              console.log('【代理调试】响应体:', body);
               if (body && body.trim() !== '' && proxyRes.statusCode !== 304) {
                 try {
                   JSON.parse(body);
                 } catch (e) {
-                  console.error('Invalid JSON response:', e);
-                  console.error('Cannot fix response body as proxyRes.end is not a function');
+                  console.error('【代理调试】无效的JSON响应:', e);
+                  console.error('【代理调试】无法修复响应体，因为proxyRes.end不是函数');
                 }
               }
             });

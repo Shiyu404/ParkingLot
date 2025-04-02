@@ -746,31 +746,69 @@ async function getUserViolations(userId, startDate, endDate) {
     });
 }
 
-//5.2 create violation admin only
-async function createViolation(lotId, province, licensePlate, reason, time) {
-    const query = `
-        INSERT INTO Violations (LOT_ID, PROVINCE, LICENSE_PLATE, REASON, TIME)
-        VALUES (:lotId, :province, :licensePlate, :reason, :violationTime)
-        RETURNING TICKET_ID INTO :ticketId
-    `;
+// 创建停车违规记录 - 管理员界面使用
+async function createViolation(province, licensePlate, reason, lotId, vehicleId = null) {
+    let connection;
+    try {
+        connection = await oracledb.getConnection(dbConfig);
 
-    return await withOracleDB(async (connection) => {
-        const binds = {
-            lotId,
-            province,
-            licensePlate,
-            reason,
-            violationTime: new Date(time),  
-            ticketId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
-        };
+        // 当前时间作为违规记录创建时间
+        const currentTime = new Date();
 
-        const result = await connection.execute(query, binds, { autoCommit: true });
+        // 创建违规记录
+        const insertQuery = `
+            INSERT INTO Violations (
+                LOT_ID, PROVINCE, LICENSE_PLATE, 
+                REASON, TIME
+            ) VALUES (
+                :lotId, :province, :licensePlate, 
+                :reason, :time
+            ) RETURNING TICKET_ID INTO :ticketId
+        `;
+
+        console.log(`Creating violation with params: lotId=${lotId}, province=${province}, licensePlate=${licensePlate}, reason=${reason}`);
+        
+        const result = await connection.execute(
+            insertQuery,
+            {
+                lotId: parseInt(lotId, 10),
+                province,
+                licensePlate,
+                reason,
+                time: currentTime,
+                ticketId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+            },
+            { autoCommit: true }
+        );
+
+        console.log(`Violation created with ID: ${result.outBinds.ticketId[0]}`);
+        
         return {
-            success:true,
-            ticketId: result.outBinds.ticketId
+            success: true,
+            message: 'Violation record created successfully',
+            ticketId: result.outBinds.ticketId[0]
         };
-    });
+    } catch (error) {
+        console.error('Error creating violation:', error);
+        return {
+            success: false,
+            message: `Database error while creating violation record: ${error.message || '未知错误'}`,
+            errorCode: error.errorNum || -1,
+            errorDetails: error.toString()
+        };
+    } finally {
+        // 确保连接始终被关闭，即使发生错误
+        if (connection) {
+            try {
+                await connection.close();
+                console.log('Database connection closed successfully');
+            } catch (err) {
+                console.error('Error closing database connection:', err);
+            }
+        }
+    }
 }
+
 //6.1 create payment
 async function createPayment(amount, paymentMethod, cardNumber, userId, lotId, ticketId) {
     const query = `
@@ -1036,6 +1074,75 @@ async function registerVisitor(fullName, phone, unitToVisit, region, licensePlat
     });
 }
 
+// 验证车牌是否有有效的停车许可
+async function verifyVehicle(plate, region, lotId) {
+    let connection;
+    try {
+        connection = await oracledb.getConnection(dbConfig);
+
+        // 查询车辆是否在数据库中存在且有效期未过
+        const query = `
+            SELECT v.VEHICLE_ID, v.LICENSE_PLATE, v.PROVINCE, v.USER_ID, v.CURRENT_LOT_ID, v.PARKING_UNTIL
+            FROM Vehicles v
+            WHERE v.LICENSE_PLATE = :licensePlate 
+            AND v.PROVINCE = :province 
+            AND v.CURRENT_LOT_ID = :lotId
+        `;
+
+        const result = await connection.execute(
+            query,
+            {
+                licensePlate: plate,
+                province: region,
+                lotId: parseInt(lotId, 10)
+            },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        if (result.rows.length === 0) {
+            return {
+                success: false,
+                message: `No vehicle found with license plate ${region}-${plate} in lot ID ${lotId}`
+            };
+        }
+
+        // 车辆存在，返回详细信息
+        const vehicle = {
+            id: result.rows[0].VEHICLE_ID,
+            licensePlate: result.rows[0].LICENSE_PLATE,
+            province: result.rows[0].PROVINCE,
+            userId: result.rows[0].USER_ID,
+            lotId: result.rows[0].CURRENT_LOT_ID,
+            parkingUntil: result.rows[0].PARKING_UNTIL
+        };
+
+        return {
+            success: true,
+            message: 'Vehicle found',
+            vehicle
+        };
+    } catch (error) {
+        console.error('Error verifying vehicle:', error);
+        // 返回更具体的错误信息
+        return {
+            success: false,
+            message: `Database error while verifying vehicle: ${error.message || '未知错误'}`,
+            errorCode: error.errorNum || -1,
+            errorDetails: error.toString()
+        };
+    } finally {
+        // 确保连接始终被关闭，即使发生错误
+        if (connection) {
+            try {
+                await connection.close();
+                console.log('Database connection closed successfully in verifyVehicle');
+            } catch (err) {
+                console.error('Error closing database connection in verifyVehicle:', err);
+            }
+        }
+    }
+}
+
 module.exports = {
     testOracleConnection,
     loginUser,
@@ -1055,5 +1162,6 @@ module.exports = {
     adminLogin,
     generateReport,
     getUserVisitorPassQuota,
-    registerVisitor
+    registerVisitor,
+    verifyVehicle
 };

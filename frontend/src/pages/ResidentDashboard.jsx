@@ -68,7 +68,6 @@ export default function ResidentDashboard() {
       setLoading(true);
       const response = await fetch(API_ENDPOINTS.getUserVisitorPasses(user.id));
       const data = await response.json();
-      console.log('Fetch visitor passes response:', data);
       
       if (data.success) {
         const passes = data.visitorPasses || [];
@@ -99,7 +98,6 @@ export default function ResidentDashboard() {
       validTime: pass.validTime
     }));
     
-    console.log('Active visitors:', activeForDisplay);
     setActiveVisitors(activeForDisplay);
     
     // Process history records
@@ -119,7 +117,6 @@ export default function ResidentDashboard() {
       return new Date(b.date) - new Date(a.date);
     });
     
-    console.log('Pass history:', history);
     setPassHistory(history);
     
     // Update pass quota
@@ -199,11 +196,6 @@ export default function ResidentDashboard() {
       }
 
       const visitorPlate = `${regionCode}-${licensePlate.toUpperCase()}`;
-      console.log('Creating visitor pass with:', {
-        userId: user.id,
-        hours: selectedPass.hours,
-        visitorPlate
-      });
 
       const response = await fetch(API_ENDPOINTS.createVisitorPass, {
         method: 'POST',
@@ -218,7 +210,6 @@ export default function ResidentDashboard() {
       });
 
       const data = await response.json();
-      console.log('Apply visitor pass response:', data);
 
       if (data.success) {
         toast({

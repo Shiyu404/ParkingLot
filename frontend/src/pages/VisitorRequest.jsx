@@ -102,25 +102,26 @@ const VisitorRequest = () => {
         const fetchParkingLots = async () => {
             try {
                 setIsLoading(true);
-                const apiUrl = '/api/parking-lots'; // 直接使用可用的API端点
-                console.log('Fetching parking lots from:', apiUrl);
+                const apiUrl = API_ENDPOINTS.getAllParkingLots; // 使用API_ENDPOINTS
+ 
                 
                 const response = await fetch(apiUrl);
-                console.log('Response status:', response.status);
+
                 
                 if (!response.ok) {
                     throw new Error(`Failed to fetch parking lots: ${response.status}`);
                 }
                 
                 const text = await response.text();
-                console.log('Response text:', text);
+
                 
                 if (!text) {
                     throw new Error('Empty response received');
                 }
                 
                 const data = JSON.parse(text);
-                console.log('Parsed data:', data);
+
+        
                 
                 if (data.success && data.parkingLots) {
                     // 转换数据格式
@@ -171,11 +172,11 @@ const VisitorRequest = () => {
 
         try {
             setIsLoading(true);
-            console.log('Submitting visitor request:', formData);
+
             
             // 直接调用已知可用的API端点
-            const apiUrl = '/api/users/register';
-            console.log('Using API endpoint:', apiUrl);
+            const apiUrl = API_ENDPOINTS.register;
+
             
             // 构建访客数据
             const visitorData = {
@@ -183,31 +184,33 @@ const VisitorRequest = () => {
                 phone: formData.phone,
                 password: formData.phone, // 使用电话号码作为初始密码
                 userType: 'visitor',
+                unitNumber: null, // 显式设置为null，因为后端检查需要
                 hostInformation: `Visiting Unit ${formData.unitToVisit}`,
                 role: 'user'
             };
             
-            console.log('Sending visitor data:', visitorData);
-            
+
+            console.log('Registering visitor with data:', visitorData);
             // 第一步：注册访客用户
             const userResponse = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(visitorData)
             });
             
-            console.log('User registration status:', userResponse.status);
+
             
             if (!userResponse.ok) {
                 const errorText = await userResponse.text();
                 console.error('User registration error:', errorText);
-                throw new Error('Unable to create visitor account');
+                console.error('Response status:', userResponse.status);
+                throw new Error('Unable to create visitor account: ' + (errorText || userResponse.status));
             }
             
             const userData = await userResponse.json();
-            console.log('User registration response:', userData);
             
             if (!userData.success || !userData.user || !userData.user.id) {
                 throw new Error(userData.message || 'Visitor registration failed');
@@ -224,11 +227,10 @@ const VisitorRequest = () => {
                 licensePlate: formData.licensePlate,
                 lotId: formData.parkingLotId,
                 // 不设置 parkingUntil，由住户审批时确定
+                parkingUntil: new Date(now.getTime()).toISOString().replace('T', ' ').substring(0, 19)
             };
             
-            console.log('Sending vehicle data:', vehicleData);
-            
-            const vehicleResponse = await fetch('/api/vehicles', {
+            const vehicleResponse = await fetch(API_ENDPOINTS.registerVehicle, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -236,7 +238,6 @@ const VisitorRequest = () => {
                 body: JSON.stringify(vehicleData)
             });
             
-            console.log('Vehicle registration status:', vehicleResponse.status);
             
             if (!vehicleResponse.ok) {
                 const errorText = await vehicleResponse.text();
@@ -245,7 +246,6 @@ const VisitorRequest = () => {
             }
             
             const vehicleData2 = await vehicleResponse.json();
-            console.log('Vehicle registration response:', vehicleData2);
             
             // Save information for the success screen
             const selectedLot = parkingLots.find(lot => lot.id === formData.parkingLotId);

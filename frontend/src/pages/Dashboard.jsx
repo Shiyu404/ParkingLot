@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Car, Users, AlertTriangle, Ticket, ArrowUpRight, ArrowDownRight, MapPin, Search, FileText } from 'lucide-react';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import OccupancyChart from '@/components/dashboard/OccupancyChart';
@@ -13,35 +12,88 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
-
-// Mock parking lots
-const parkingLots = [
-    { id: '1', name: 'North Tower Parking', totalSpaces: 150, availableSpaces: 45 },
-    { id: '2', name: 'South Tower Parking', totalSpaces: 120, availableSpaces: 32 },
-    { id: '3', name: 'East Tower Parking', totalSpaces: 80, availableSpaces: 18 },
-    { id: '4', name: 'West Tower Parking', totalSpaces: 100, availableSpaces: 27 },
-];
+import { API_ENDPOINTS } from '@/config';
 
 // North American regions
 const northAmericanRegions = [
-    // A subset of US states and Canadian provinces
-    { value: 'CA', label: 'California' },
-    { value: 'NY', label: 'New York' },
-    { value: 'TX', label: 'Texas' },
-    { value: 'ON', label: 'Ontario' },
+    // 加拿大省份
+    { value: 'AB', label: 'Alberta' },
     { value: 'BC', label: 'British Columbia' },
-    // Add more as needed
+    { value: 'MB', label: 'Manitoba' },
+    { value: 'NB', label: 'New Brunswick' },
+    { value: 'NL', label: 'Newfoundland and Labrador' },
+    { value: 'NS', label: 'Nova Scotia' },
+    { value: 'ON', label: 'Ontario' },
+    { value: 'PE', label: 'Prince Edward Island' },
+    { value: 'QC', label: 'Quebec' },
+    { value: 'SK', label: 'Saskatchewan' },
+    
+    // 美国州
+    { value: 'AL', label: 'Alabama' },
+    { value: 'AK', label: 'Alaska' },
+    { value: 'AZ', label: 'Arizona' },
+    { value: 'AR', label: 'Arkansas' },
+    { value: 'CA', label: 'California' },
+    { value: 'CO', label: 'Colorado' },
+    { value: 'CT', label: 'Connecticut' },
+    { value: 'DE', label: 'Delaware' },
+    { value: 'FL', label: 'Florida' },
+    { value: 'GA', label: 'Georgia' },
+    { value: 'HI', label: 'Hawaii' },
+    { value: 'ID', label: 'Idaho' },
+    { value: 'IL', label: 'Illinois' },
+    { value: 'IN', label: 'Indiana' },
+    { value: 'IA', label: 'Iowa' },
+    { value: 'KS', label: 'Kansas' },
+    { value: 'KY', label: 'Kentucky' },
+    { value: 'LA', label: 'Louisiana' },
+    { value: 'ME', label: 'Maine' },
+    { value: 'MD', label: 'Maryland' },
+    { value: 'MA', label: 'Massachusetts' },
+    { value: 'MI', label: 'Michigan' },
+    { value: 'MN', label: 'Minnesota' },
+    { value: 'MS', label: 'Mississippi' },
+    { value: 'MO', label: 'Missouri' },
+    { value: 'MT', label: 'Montana' },
+    { value: 'NE', label: 'Nebraska' },
+    { value: 'NV', label: 'Nevada' },
+    { value: 'NH', label: 'New Hampshire' },
+    { value: 'NJ', label: 'New Jersey' },
+    { value: 'NM', label: 'New Mexico' },
+    { value: 'NY', label: 'New York' },
+    { value: 'NC', label: 'North Carolina' },
+    { value: 'ND', label: 'North Dakota' },
+    { value: 'OH', label: 'Ohio' },
+    { value: 'OK', label: 'Oklahoma' },
+    { value: 'OR', label: 'Oregon' },
+    { value: 'PA', label: 'Pennsylvania' },
+    { value: 'RI', label: 'Rhode Island' },
+    { value: 'SC', label: 'South Carolina' },
+    { value: 'SD', label: 'South Dakota' },
+    { value: 'TN', label: 'Tennessee' },
+    { value: 'TX', label: 'Texas' },
+    { value: 'UT', label: 'Utah' },
+    { value: 'VT', label: 'Vermont' },
+    { value: 'VA', label: 'Virginia' },
+    { value: 'WA', label: 'Washington' },
+    { value: 'WV', label: 'West Virginia' },
+    { value: 'WI', label: 'Wisconsin' },
+    { value: 'WY', label: 'Wyoming' }
 ];
 
 const Dashboard = () => {
     const { toast } = useToast();
-    const [selectedParkingLot, setSelectedParkingLot] = useState(parkingLots[0].id);
+    const [parkingLots, setParkingLots] = useState([]);
+    const [selectedParkingLot, setSelectedParkingLot] = useState(null);
     const [plateToCheck, setPlateToCheck] = useState('');
     const [plateRegion, setPlateRegion] = useState('');
     const [plateCheckResult, setPlateCheckResult] = useState(null);
     const [ticketReason, setTicketReason] = useState('No Valid Visitor Pass');
-
-    const activeParkingLot = parkingLots.find(lot => lot.id === selectedParkingLot) || parkingLots[0];
+    const [activeParkingLot, setActiveParkingLot] = useState(null);
+    const [currentVehicles, setCurrentVehicles] = useState([]);
+    const [recentActivity, setRecentActivity] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [stats, setStats] = useState([]);
 
     const container = {
         hidden: { opacity: 0 },
@@ -58,66 +110,225 @@ const Dashboard = () => {
         show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
     };
 
-    const stats = [
-        {
-            title: 'Total Spaces',
-            value: activeParkingLot.totalSpaces.toString(),
-            change: '+0',
-            isIncrease: true,
-            icon: <Car className="h-5 w-5" />,
-            progress: Math.round((activeParkingLot.totalSpaces - activeParkingLot.availableSpaces) / activeParkingLot.totalSpaces * 100)
-        },
-        {
-            title: 'Available Spaces',
-            value: activeParkingLot.availableSpaces.toString(),
-            change: '-3',
-            isIncrease: false,
-            icon: <MapPin className="h-5 w-5" />,
-            progress: Math.round(activeParkingLot.availableSpaces / activeParkingLot.totalSpaces * 100)
-        },
-        {
-            title: 'Active Visitor Passes',
-            value: '28',
-            change: '+2',
-            isIncrease: true,
-            icon: <Ticket className="h-5 w-5" />,
-            progress: 35
-        },
-        {
-            title: 'Open Violations',
-            value: '12',
-            change: '-1',
-            isIncrease: false,
-            icon: <AlertTriangle className="h-5 w-5" />,
-            progress: 15
-        },
-    ];
+    // 获取停车场列表 - 整合了两个fetchParkingLots函数
+    useEffect(() => {
+        const fetchParkingLots = async () => {
+            try {
+                setIsLoading(true);
+                
+                try {
+                    const response = await fetch(API_ENDPOINTS.getAllParkingLots);
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch parking lots: ${response.status}`);
+                    }
+                    
+                    const text = await response.text();
+                    console.log('Parking lots API response:', text);
+                    
+                    if (!text) {
+                        throw new Error('Empty response received');
+                    }
+                    
+                    const data = JSON.parse(text);
+                    
+                    if (data.success && data.parkingLots) {
+                        // 使用API返回的完整字段
+                        const lotsWithNames = data.parkingLots.map(lot => {
+                            return {
+                                id: lot.lotId.toString(),
+                                name: lot.lotName || `Parking Lot ${lot.lotId}`, // 使用API返回的lotName
+                                address: lot.address || '',
+                                totalSpaces: lot.totalSpaces || 0,
+                                availableSpaces: lot.availableSpaces || 0,
+                                occupiedSpaces: lot.totalSpaces - lot.availableSpaces || 0,
+                                capacity: lot.totalSpaces,
+                                currentRemain: lot.availableSpaces,
+                                currentOccupancy: lot.totalSpaces - lot.availableSpaces,
+                                vehicles: lot.vehicles || []
+                            };
+                        });
+                        
+                        console.log('Formatted parking lots:', lotsWithNames);
+                        setParkingLots(lotsWithNames);
+                        
+                        // 如果有停车场，设置第一个为默认选择
+                        if (lotsWithNames.length > 0) {
+                            setSelectedParkingLot(lotsWithNames[0].id);
+                            setActiveParkingLot(lotsWithNames[0]);
+                            await fetchParkingLotDetails(lotsWithNames[0].id);
+                        }
+                        
+                        return; // 成功获取数据，退出函数
+                    } else {
+                        throw new Error(data.message || 'Failed to fetch parking lots');
+                    }
+                } catch (error) {
+                    console.error("Error fetching parking lots from API:", error);
+                    toast({
+                        title: "Error",
+                        description: "Failed to load parking lots. Please try again later.",
+                        variant: "destructive",
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching parking lots:', error);
+                toast({
+                    title: "Error",
+                    description: "Failed to load parking lots. Please try again later.",
+                    variant: "destructive",
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-    const recentActivity = [
-        { id: 1, type: 'Visitor Pass', description: 'New pass for John Smith', time: '10 minutes ago', status: 'success' },
-        { id: 2, type: 'Violation', description: 'Unauthorized vehicle in spot A12', time: '25 minutes ago', status: 'warning' },
-        { id: 3, type: 'Vehicle Registration', description: 'New vehicle registered by Apt 204', time: '1 hour ago', status: 'info' },
-        { id: 4, type: 'Visitor Pass', description: 'Pass extended for Sarah Johnson', time: '2 hours ago', status: 'success' },
-        { id: 5, type: 'Violation', description: 'Expired visitor pass in spot B8', time: '3 hours ago', status: 'warning' },
-    ];
+        fetchParkingLots();
+    }, [toast]);
 
-    const currentVehicles = [
-        { licensePlate: 'ABC123', unitNumber: '101', visitorName: 'John Smith', passType: '8 hour', remaining: '6h 23m' },
-        { licensePlate: 'DEF456', unitNumber: '205', visitorName: 'Sarah Johnson', passType: '24 hour', remaining: '21h 15m' },
-        { licensePlate: 'GHI789', unitNumber: '310', visitorName: 'Mike Brown', passType: 'Weekend', remaining: '1d 4h' },
-        { licensePlate: 'JKL012', unitNumber: '422', visitorName: 'Emma Wilson', passType: '8 hour', remaining: '2h 45m' },
-    ];
+    // 当选择停车场变化时，获取该停车场详细信息
+    useEffect(() => {
+        if (selectedParkingLot) {
+            fetchParkingLotDetails(selectedParkingLot);
+        }
+    }, [selectedParkingLot]);
+
+    // 获取停车场详细信息
+    const fetchParkingLotDetails = async (lotId) => {
+        try {
+            const response = await fetch(API_ENDPOINTS.getParkingLotById(lotId));
+            if (!response.ok) {
+                throw new Error(`Failed to fetch parking lot details: ${response.status}`);
+            }
+            
+            const text = await response.text();
+            console.log('Parking lot details API response:', text);
+            
+            if (!text) {
+                throw new Error('Empty response received');
+            }
+            
+            const data = JSON.parse(text);
+            
+            if (data.success && data.parkingLots) {
+                const lot = data.parkingLots;
+                console.log('API returned lot details:', lot);
+                
+                const currentLot = parkingLots.find(l => l.id === lotId);
+                
+                // 设置当前停车场信息
+                setActiveParkingLot(currentLot);
+                
+                // 更新统计信息，使用API返回的字段
+                setStats([
+                    {
+                        title: 'Total Spaces',
+                        value: (lot.totalSpaces || 0).toString(),
+                        change: '+0',
+                        isIncrease: true,
+                        icon: 'car',
+                        progress: Math.round((lot.totalSpaces - lot.availableSpaces) / (lot.totalSpaces || 1) * 100)
+                    },
+                    {
+                        title: 'Available Spaces',
+                        value: (lot.availableSpaces || 0).toString(),
+                        change: '0',
+                        isIncrease: true,
+                        icon: 'map-pin',
+                        progress: Math.round((lot.availableSpaces || 0) / (lot.totalSpaces || 1) * 100)
+                    },
+                    {
+                        title: 'Active Visitor Passes',
+                        value: (lot.vehicles ? lot.vehicles.length : 0).toString(),
+                        change: '0',
+                        isIncrease: true,
+                        icon: 'ticket',
+                        progress: Math.round((lot.vehicles ? lot.vehicles.length : 0) / (lot.totalSpaces || 1) * 100)
+                    },
+                    {
+                        title: 'Open Violations',
+                        value: '0', // 这里需要另外的API来获取违规数量
+                        change: '0',
+                        isIncrease: false,
+                        icon: 'alert-triangle',
+                        progress: 0
+                    },
+                ]);
+                
+                // 转换车辆信息为表格格式
+                if (lot.vehicles && lot.vehicles.length > 0) {
+                    // 这里需要另外API来获取更多车辆信息，包括访客名称、单元号等
+                    // 暂时使用模拟数据格式
+                    const formattedVehicles = lot.vehicles.map((vehicle, index) => {
+                        // 从停车时间计算剩余时间
+                        const parkingUntil = new Date(vehicle.parkingUntil);
+                        const now = new Date();
+                        const diff = parkingUntil - now;
+                        
+                        let remaining = '';
+                        if (diff > 0) {
+                            const hours = Math.floor(diff / (1000 * 60 * 60));
+                            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                            if (hours >= 24) {
+                                const days = Math.floor(hours / 24);
+                                remaining = `${days}d ${hours % 24}h`;
+                            } else {
+                                remaining = `${hours}h ${minutes}m`;
+                            }
+                        } else {
+                            remaining = 'Expired';
+                        }
+                        
+                        return {
+                            licensePlate: vehicle.licensePlate,
+                            province: vehicle.province,
+                            unitNumber: '---', // 需要额外API获取
+                            visitorName: '---', // 需要额外API获取
+                            passType: diff > 24 * 60 * 60 * 1000 ? 'Weekend' : '24 hour',
+                            remaining: remaining
+                        };
+                    });
+                    
+                    setCurrentVehicles(formattedVehicles);
+                } else {
+                    setCurrentVehicles([]);
+                }
+                
+                // 获取最近活动
+                await fetchRecentActivity(lotId);
+            }
+        } catch (error) {
+            console.error("Error fetching parking lot details:", error);
+            toast({
+                title: "Error",
+                description: "Failed to load parking lot details",
+                variant: "destructive",
+            });
+        }
+    };
+
+    // 获取最近活动记录
+    const fetchRecentActivity = async (lotId) => {
+        // 这里应该有一个获取最近活动的API
+        // 暂时使用模拟数据
+        setRecentActivity([
+            { id: 1, type: 'Visitor Pass', description: 'New pass for John Smith', time: '10 minutes ago', status: 'success' },
+            { id: 2, type: 'Violation', description: 'Unauthorized vehicle in spot A12', time: '25 minutes ago', status: 'warning' },
+            { id: 3, type: 'Vehicle Registration', description: 'New vehicle registered by Apt 204', time: '1 hour ago', status: 'info' },
+            { id: 4, type: 'Visitor Pass', description: 'Pass extended for Sarah Johnson', time: '2 hours ago', status: 'success' },
+            { id: 5, type: 'Violation', description: 'Expired visitor pass in spot B8', time: '3 hours ago', status: 'warning' },
+        ]);
+    };
 
     const handleParkingLotChange = (value) => {
         setSelectedParkingLot(value);
-        // In a real app, this would fetch data for the selected parking lot
+        const selected = parkingLots.find(lot => lot.id === value);
         toast({
             title: "Parking Lot Changed",
-            description: `Switched to ${parkingLots.find(lot => lot.id === value)?.name}`,
+            description: `Switched to ${selected?.name || 'Unknown Parking Lot'}`,
         });
     };
 
-    const checkLicensePlate = () => {
+    const checkLicensePlate = async () => {
         if (!plateToCheck || !plateRegion) {
             toast({
                 title: "Missing information",
@@ -127,32 +338,184 @@ const Dashboard = () => {
             return;
         }
 
-        // In a real app, this would check against your backend database
-        // For demo, we'll randomly determine if the plate is valid
-        const isValid = Math.random() > 0.5;
+        try {
+            setPlateCheckResult({
+                valid: false,
+                message: `Checking vehicle with plate ${plateRegion}-${plateToCheck}...`
+            });
 
-        setPlateCheckResult({
-            valid: isValid,
-            message: isValid
-                ? `Vehicle with plate ${plateRegion}-${plateToCheck} has a valid visitor pass`
-                : `No valid pass found for vehicle with plate ${plateRegion}-${plateToCheck}`
-        });
+            const cleanedPlateNumber = plateToCheck.trim().replace(/\s+/g, '');
+
+            // 使用API_ENDPOINTS配置
+            const apiUrl = API_ENDPOINTS.verifyVehicle(cleanedPlateNumber, plateRegion, selectedParkingLot);
+            
+            console.log('【调试】调用API URL:', apiUrl);
+            console.log('【调试】车牌参数:', {
+                plate: cleanedPlateNumber,
+                region: plateRegion,
+                lotId: selectedParkingLot
+            });
+            console.log('【调试】请求的完整URL:', window.location.origin + apiUrl);
+
+            // 使用完整的错误处理流程
+            try {
+                console.log('【调试】发送请求前...');
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Debug': 'true'  // 添加调试头
+                    }
+                });
+                console.log('【调试】收到响应状态:', response.status);
+                console.log('【调试】响应头:', JSON.stringify([...response.headers.entries()]));
+                
+                // 获取响应文本
+                const responseText = await response.text();
+                console.log('【调试】响应文本:', responseText);
+                
+                // 如果响应不是200 OK，抛出错误
+                if (!response.ok) {
+                    throw new Error(`Server error (${response.status}): ${responseText}`);
+                }
+                
+                // 尝试解析JSON
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (error) {
+                    console.error('【调试】JSON解析错误:', error);
+                    throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
+                }
+                
+                console.log('【调试】解析后的数据:', data);
+                
+                // 处理成功响应
+                if (data.success) {
+                    const vehicle = data.vehicle;
+                    const parkingUntil = new Date(vehicle.parkingUntil);
+                    const now = new Date();
+                    
+                    console.log('【调试】车辆信息:', vehicle);
+                    console.log('【调试】停车截止时间:', parkingUntil);
+                    console.log('【调试】当前时间:', now);
+                    
+                    if (parkingUntil > now) {
+                        setPlateCheckResult({
+                            valid: true,
+                            message: `Vehicle with plate ${plateRegion}-${cleanedPlateNumber} has a valid visitor pass until ${parkingUntil.toLocaleString()}`,
+                            vehicle: vehicle
+                        });
+                    } else {
+                        setPlateCheckResult({
+                            valid: false,
+                            message: `Vehicle with plate ${plateRegion}-${cleanedPlateNumber} has an expired visitor pass (expired at ${parkingUntil.toLocaleString()})`,
+                            vehicle: vehicle,
+                            reason: 'Expired Pass'
+                        });
+                        setTicketReason('Expired Pass');
+                    }
+                } else {
+                    setPlateCheckResult({
+                        valid: false,
+                        message: data.message || `No valid pass found for vehicle with plate ${plateRegion}-${cleanedPlateNumber}`,
+                        reason: 'No Valid Visitor Pass'
+                    });
+                    setTicketReason('No Valid Visitor Pass');
+                }
+            } catch (fetchError) {
+                console.error('【调试】请求错误:', fetchError);
+                    
+                // 如果是服务器问题，显示模拟数据
+                console.log('【调试】使用模拟数据');
+                
+                // 模拟响应
+                const mockVehicle = {
+                    id: 1,
+                    licensePlate: cleanedPlateNumber,
+                    province: plateRegion,
+                    lotId: selectedParkingLot,
+                    parkingUntil: new Date(Date.now() + 2 * 60 * 60 * 1000) // 2小时后
+                };
+                
+                setPlateCheckResult({
+                    valid: true,
+                    message: `【测试模式】车牌 ${plateRegion}-${cleanedPlateNumber} 有效访客通行证，到期时间：${mockVehicle.parkingUntil.toLocaleString()}`,
+                    vehicle: mockVehicle
+                });
+                
+                toast({
+                    title: "测试模式",
+                    description: "接口调用失败，使用模拟数据进行测试。请检查服务器日志。",
+                    variant: "warning",
+                });
+            }
+        } catch (error) {
+            console.error("【调试】主函数错误:", error);
+            toast({
+                title: "Error",
+                description: "Failed to verify license plate: " + error.message,
+                variant: "destructive",
+            });
+            setPlateCheckResult(null);
+        }
     };
 
-    const issueTicket = () => {
+    const issueTicket = async () => {
         if (!plateCheckResult || plateCheckResult.valid) return;
 
-        // In a real app, this would create a ticket in your backend
-        toast({
-            title: "Ticket Issued",
-            description: `Ticket issued for ${plateRegion}-${plateToCheck} for ${ticketReason}`,
-        });
+        try {
+            const cleanedPlateNumber = plateToCheck.trim().replace(/\s+/g, '');
 
-        // Reset form
-        setPlateToCheck('');
-        setPlateRegion('');
-        setPlateCheckResult(null);
-        setTicketReason('No Valid Visitor Pass');
+            const response = await fetch(API_ENDPOINTS.createViolation, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    province: plateRegion,
+                    licensePlate: cleanedPlateNumber,
+                    reason: ticketReason,
+                    lotId: selectedParkingLot,
+                    vehicleId: plateCheckResult.vehicle ? plateCheckResult.vehicle.id : null
+                })
+            });
+
+            const responseText = await response.text();
+            console.log('Response status:', response.status);
+            console.log('Response text:', responseText);
+
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (error) {
+                throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
+            }
+
+            if (data.success) {
+                toast({
+                    title: "Ticket Issued",
+                    description: `Ticket #${data.ticketId} issued for ${plateRegion}-${cleanedPlateNumber} for ${ticketReason}`,
+                });
+
+                setPlateToCheck('');
+                setPlateRegion('');
+                setPlateCheckResult(null);
+                setTicketReason('No Valid Visitor Pass');
+
+                if (selectedParkingLot) {
+                    fetchParkingLotDetails(selectedParkingLot);
+                }
+            } else {
+                throw new Error(data.message || 'Failed to issue ticket');
+            }
+        } catch (error) {
+            console.error("Error issuing ticket:", error);
+            toast({
+                title: "Error",
+                description: "Failed to issue ticket: " + error.message,
+                variant: "destructive",
+            });
+        }
     };
 
     const renderLicensePlateVerification = () => (
@@ -413,186 +776,164 @@ const Dashboard = () => {
                 </div>
 
                 <div className="mt-4 md:mt-0 w-full md:w-64">
-                    <Select
-                        value={selectedParkingLot}
-                        onValueChange={handleParkingLotChange}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select parking lot" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {parkingLots.map(lot => (
-                                <SelectItem key={lot.id} value={lot.id}>{lot.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    {parkingLots.length > 0 ? (
+                        <Select
+                            value={selectedParkingLot}
+                            onValueChange={handleParkingLotChange}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select parking lot" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {parkingLots.map(lot => (
+                                    <SelectItem key={lot.id} value={lot.id}>{lot.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        <div className="text-center py-2 border rounded-md text-gray-500">
+                            Loading parking lots...
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <motion.div
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-                variants={container}
-                initial="hidden"
-                animate="show"
-            >
-                {stats.map((stat, index) => (
-                    <motion.div key={index} variants={item}>
-                        <DashboardCard
-                            title={stat.title}
-                            icon={stat.icon}
-                            className={stat.title === 'Open Violations' ? 'border-orange-200' : ''}
-                        >
-                            <div className="flex items-end justify-between mb-2">
-                                <span className="text-3xl font-bold">{stat.value}</span>
-                                <span className={`flex items-center text-sm ${stat.isIncrease ? 'text-green-500' : 'text-red-500'}`}>
-                  {stat.isIncrease ? (
-                      <ArrowUpRight className="h-4 w-4 mr-1" />
-                  ) : (
-                      <ArrowDownRight className="h-4 w-4 mr-1" />
-                  )}
-                                    {stat.change}
-                </span>
-                            </div>
-                            <Progress value={stat.progress} className="h-2" />
-                        </DashboardCard>
+            {isLoading ? (
+                <div className="text-center py-12">
+                    <p className="text-lg text-gray-500">Loading dashboard data...</p>
+                </div>
+            ) : (
+                <>
+                    <motion.div
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+                        variants={container}
+                        initial="hidden"
+                        animate="show"
+                    >
+                        {stats.map((stat, index) => (
+                            <motion.div key={index} variants={item}>
+                                <DashboardCard
+                                    title={stat.title}
+                                    icon={stat.icon}
+                                    className={stat.title === 'Open Violations' ? 'border-orange-200' : ''}
+                                >
+                                    <div className="flex items-end justify-between mb-2">
+                                        <span className="text-3xl font-bold">{stat.value}</span>
+                                        <span className={`flex items-center text-sm ${stat.isIncrease ? 'text-green-500' : 'text-red-500'}`}>
+                                            {stat.isIncrease ? (
+                                                <ArrowUpRight className="h-4 w-4 mr-1" />
+                                            ) : (
+                                                <ArrowDownRight className="h-4 w-4 mr-1" />
+                                            )}
+                                            {stat.change}
+                                        </span>
+                                    </div>
+                                    <Progress value={stat.progress} className="h-2" />
+                                </DashboardCard>
+                            </motion.div>
+                        ))}
                     </motion.div>
-                ))}
-            </motion.div>
 
-            {renderLicensePlateVerification()}
+                    {renderLicensePlateVerification()}
 
-            {renderManagementFunctions()}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        <motion.div
+                            className="lg:col-span-2"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.2 }}
+                        >
+                            <DashboardCard
+                                title="Parking Occupancy"
+                                description="24-hour trend"
+                            >
+                                <OccupancyChart />
+                            </DashboardCard>
+                        </motion.div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                <motion.div
-                    className="lg:col-span-2"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                >
-                    <DashboardCard
-                        title="Parking Occupancy"
-                        description="24-hour trend"
-                    >
-                        <OccupancyChart />
-                    </DashboardCard>
-                </motion.div>
-
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
-                >
-                    <DashboardCard
-                        title="Recent Activity"
-                        description="Latest updates and events"
-                    >
-                        <div className="space-y-4">
-                            {recentActivity.map((activity) => (
-                                <div key={activity.id} className="flex items-start space-x-3 pb-3 border-b last:border-0 border-gray-100">
-                                    <div className={`w-2 h-2 mt-2 rounded-full ${
-                                        activity.status === 'success' ? 'bg-green-500' :
-                                            activity.status === 'warning' ? 'bg-orange-500' : 'bg-blue-500'
-                                    }`}></div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium">{activity.description}</p>
-                                        <p className="text-xs text-gray-500">{activity.time}</p>
-                                    </div>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.3 }}
+                        >
+                            <DashboardCard
+                                title="Recent Activity"
+                                description="Latest updates and events"
+                            >
+                                <div className="space-y-4">
+                                    {recentActivity.map((activity) => (
+                                        <div key={activity.id} className="flex items-start space-x-3 pb-3 border-b last:border-0 border-gray-100">
+                                            <div className={`w-2 h-2 mt-2 rounded-full ${
+                                                activity.status === 'success' ? 'bg-green-500' :
+                                                    activity.status === 'warning' ? 'bg-orange-500' : 'bg-blue-500'
+                                            }`}></div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium">{activity.description}</p>
+                                                <p className="text-xs text-gray-500">{activity.time}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <Button variant="ghost" size="sm" className="w-full text-primary justify-center mt-2">
+                                        View All Activity
+                                    </Button>
                                 </div>
-                            ))}
-                            <Button variant="ghost" size="sm" className="w-full text-primary justify-center mt-2">
-                                View All Activity
-                            </Button>
-                        </div>
-                    </DashboardCard>
-                </motion.div>
-            </div>
+                            </DashboardCard>
+                        </motion.div>
+                    </div>
 
-            <motion.div
-                className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-            >
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center">
-                            <Car className="mr-2 h-5 w-5" />
-                            Active Visitor Vehicles
-                        </CardTitle>
-                        <CardDescription>Current vehicles using visitor passes</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="overflow-auto">
-                            <table className="w-full">
-                                <thead>
-                                <tr className="border-b">
-                                    <th className="pb-2 text-left font-medium text-sm">License</th>
-                                    <th className="pb-2 text-left font-medium text-sm">Unit</th>
-                                    <th className="pb-2 text-left font-medium text-sm">Visitor</th>
-                                    <th className="pb-2 text-left font-medium text-sm">Pass Type</th>
-                                    <th className="pb-2 text-left font-medium text-sm">Remaining</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {currentVehicles.map((vehicle, idx) => (
-                                    <tr key={idx} className="border-b last:border-0">
-                                        <td className="py-3 text-sm">{vehicle.licensePlate}</td>
-                                        <td className="py-3 text-sm">{vehicle.unitNumber}</td>
-                                        <td className="py-3 text-sm">{vehicle.visitorName}</td>
-                                        <td className="py-3 text-sm">{vehicle.passType}</td>
-                                        <td className="py-3 text-sm">{vehicle.remaining}</td>
-                                    </tr>
-                                ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <Button variant="ghost" size="sm" className="w-full text-primary justify-center mt-4">
-                            View All Vehicles
-                        </Button>
-                    </CardContent>
-                </Card>
-            </motion.div>
-
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.5 }}
-            >
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center">
-                            <AlertTriangle className="mr-2 h-5 w-5" />
-                            Recent Violations
-                        </CardTitle>
-                        <CardDescription>Latest parking violations</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {[
-                                { spot: 'A12', type: 'Unauthorized', time: '25 minutes ago', plate: 'CA-ABC123' },
-                                { spot: 'B08', type: 'Expired Pass', time: '3 hours ago', plate: 'NY-DEF456' },
-                                { spot: 'C23', type: 'Unauthorized', time: '5 hours ago', plate: 'TX-GHI789' },
-                                { spot: 'A07', type: 'Improper Parking', time: 'Yesterday', plate: 'ON-JKL012' },
-                                { spot: 'B19', type: 'Expired Pass', time: 'Yesterday', plate: 'BC-MNO345' },
-                            ].map((violation, index) => (
-                                <div key={index} className="flex items-start space-x-3 pb-3 border-b last:border-0 border-gray-100">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-600">
-                                        <AlertTriangle className="h-4 w-4" />
+                    <motion.div
+                        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.4 }}
+                    >
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center">
+                                    <Car className="mr-2 h-5 w-5" />
+                                    Active Visitor Vehicles
+                                </CardTitle>
+                                <CardDescription>Current vehicles using visitor passes</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {currentVehicles.length > 0 ? (
+                                    <div className="overflow-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                            <tr className="border-b">
+                                                <th className="pb-2 text-left font-medium text-sm">License</th>
+                                                <th className="pb-2 text-left font-medium text-sm">Region</th>
+                                                <th className="pb-2 text-left font-medium text-sm">Unit</th>
+                                                <th className="pb-2 text-left font-medium text-sm">Pass Type</th>
+                                                <th className="pb-2 text-left font-medium text-sm">Remaining</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {currentVehicles.map((vehicle, idx) => (
+                                                <tr key={idx} className="border-b last:border-0">
+                                                    <td className="py-3 text-sm">{vehicle.licensePlate}</td>
+                                                    <td className="py-3 text-sm">{vehicle.province}</td>
+                                                    <td className="py-3 text-sm">{vehicle.unitNumber}</td>
+                                                    <td className="py-3 text-sm">{vehicle.passType}</td>
+                                                    <td className="py-3 text-sm">{vehicle.remaining}</td>
+                                                </tr>
+                                            ))}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium">Spot {violation.spot}: {violation.type}</p>
-                                        <p className="text-xs text-gray-500">{violation.time} - Plate: {violation.plate}</p>
+                                ) : (
+                                    <div className="text-center py-8 text-gray-500">
+                                        No active visitor vehicles in this parking lot
                                     </div>
-                                </div>
-                            ))}
-                            <Button variant="ghost" size="sm" className="w-full text-primary justify-center mt-2">
-                                View All Violations
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </motion.div>
+                                )}
+                                <Button variant="ghost" size="sm" className="w-full text-primary justify-center mt-4">
+                                    View All Vehicles
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                </>
+            )}
         </div>
     );
 };

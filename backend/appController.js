@@ -4,6 +4,26 @@ const appService = require('./appService');
 
 const router = express.Router();
 
+// 添加全局请求日志记录中间件
+router.use((req, res, next) => {
+    console.log('【接收请求】方法:', req.method, '路径:', req.originalUrl);
+    console.log('【接收请求】查询参数:', req.query);
+    console.log('【接收请求】请求体:', req.body);
+    console.log('【接收请求】请求头:', req.headers);
+    
+    // 记录原始响应发送方法
+    const originalSend = res.send;
+    
+    // 重写send方法以记录响应
+    res.send = function(body) {
+        console.log('【发送响应】状态码:', res.statusCode);
+        console.log('【发送响应】内容:', typeof body === 'string' ? body : '[对象/Buffer]');
+        return originalSend.apply(this, arguments);
+    };
+    
+    next();
+});
+
 // ----------------------------------------------------------
 // API endpoints
 // Modify or extend these routes based on your project's needs.
@@ -142,6 +162,31 @@ router.post('/vehicles',async(req,res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
     
+});
+
+//2.3 Verify Vehicle - Check if a vehicle has a valid visitor pass
+router.get('/verify-vehicle', async (req, res) => {
+    try {
+        const { plate, region, lotId } = req.query;
+        
+        if (!plate || !region || !lotId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Missing required parameters: plate, region, lotId"
+            });
+        }
+        
+        console.log(`Verifying vehicle: Plate=${plate}, Region=${region}, LotId=${lotId}`);
+        const result = await appService.verifyVehicle(plate, region, lotId);
+        console.log("Verification result:", result);
+        
+        // 确保响应头设置为JSON
+        res.setHeader('Content-Type', 'application/json');
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Verify vehicle error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 // 3.1 get user's visitor passes
@@ -292,32 +337,32 @@ router.get('/violations/user/:userId', async (req, res) => {
     }
 });
 
-// 5.2 Create violation admin only
+// 4.1 Create a parking violation
 router.post('/violations', async (req, res) => {
     try {
-        const { lotId, province, licensePlate, reason, time } = req.body;
-        if (!lotId || !province || !licensePlate || !reason || !time) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide all required fields: lotId, province, licensePlate, reason, and time"
+        const { province, licensePlate, reason, lotId, vehicleId } = req.body;
+        
+        if (!province || !licensePlate || !reason || !lotId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Missing required fields: province, licensePlate, reason, lotId"
             });
         }
-
-        if (!isValidDate(time)) {
-            return res.status(400).json({
-                success: false,
-                message: "Time should be in ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
-            });
+        
+        console.log(`Creating violation: Province=${province}, Plate=${licensePlate}, Reason=${reason}, LotId=${lotId}`);
+        const result = await appService.createViolation(province, licensePlate, reason, lotId, vehicleId);
+        console.log("Violation result:", result);
+        
+        // 确保响应头设置为JSON
+        res.setHeader('Content-Type', 'application/json');
+        if (result.success) {
+            res.status(201).json(result);
+        } else {
+            res.status(400).json(result);
         }
-
-        const result = await appService.createViolation(lotId, province, licensePlate, reason, time);
-        res.status(201).json({result});
     } catch (error) {
         console.error('Create violation error:', error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to create violation record"
-        });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
