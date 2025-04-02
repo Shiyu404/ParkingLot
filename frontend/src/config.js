@@ -1,24 +1,29 @@
 // API Configuration
-export const API_BASE_URL = '/api';  // 使用 /api 前缀以匹配 Vite 代理配置
+export const API_BASE_URL = '/api';  // Use /api prefix to match Vite proxy configuration
 
 // API Endpoints
 export const API_ENDPOINTS = {
-    // 认证相关
-    login: '/api/login',
-    register: '/api/users/register',  // 修改为与后端匹配的路径
+    // Authentication related
+    login: '/api/users/login',  // Use /api prefix for Vite proxy
+    register: '/api/users/register',
     
-    // 管理员相关
+    // Admin related
     occupancy: '/api/admin/occupancy',
     violations: '/api/admin/violations',
     
-    // 停车场相关
+    // Parking lot related
     getAllParkingLots: '/api/parking-lots',
     getParkingLotById: (lotId) => `/api/parking-lots/${lotId}`,
     
-    // 违规记录相关
+    // Violation records related
     getUserViolations: (userId) => `/api/violations/user/${userId}`,
     createViolation: '/api/violations',
     
-    // 支付相关
+    // Payment related
     createPayment: '/api/payments',
+    
+    // Visitor pass related
+    getUserVisitorPasses: (userId) => `/api/visitorPasses/user/${userId}`,
+    createVisitorPass: '/api/visitorPasses',
+    getUserVisitorPassQuota: (userId) => `/api/visitorPasses/quota/${userId}`,
 }; 

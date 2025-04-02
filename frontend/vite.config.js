@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:50016',
+        target: 'http://127.0.0.1:50029',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
@@ -42,14 +42,13 @@ export default defineConfig(({ mode }) => ({
             });
             proxyRes.on('end', () => {
               console.log('Response body:', body);
-              // 确保响应体是有效的 JSON
-              try {
-                JSON.parse(body);
-              } catch (e) {
-                console.error('Invalid JSON response:', e);
-                proxyRes.statusCode = 500;
-                proxyRes.headers['content-type'] = 'application/json';
-                proxyRes.end(JSON.stringify({ error: 'Invalid server response' }));
+              if (body && body.trim() !== '' && proxyRes.statusCode !== 304) {
+                try {
+                  JSON.parse(body);
+                } catch (e) {
+                  console.error('Invalid JSON response:', e);
+                  console.error('Cannot fix response body as proxyRes.end is not a function');
+                }
               }
             });
           });
@@ -59,17 +58,9 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react({
-      include: "**/*.{jsx}",
+      include: "**/*.{js,jsx,ts,tsx}",
       jsxRuntime: 'automatic',
-      jsxImportSource: 'react',
-      babel: {
-        plugins: [
-          ["@babel/plugin-transform-react-jsx", {
-            runtime: "automatic",
-            importSource: "react"
-          }]
-        ]
-      }
+      jsxImportSource: 'react'
     }),
     mode === 'development' &&
     componentTagger(),
@@ -78,11 +69,7 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    extensions: ['.js', '.jsx', '.json'],
-  },
-  esbuild: {
-    jsx: 'automatic',
-    jsxImportSource: 'react'
+    extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
   },
   build: {
     outDir: 'dist',

@@ -348,87 +348,296 @@ async function registerVehicle(userId,province,licensePlate,lotId,parkingUntil) 
     });
 }
 
-// 3.1 get user's visitor passes
+// 3.1 Get user's visitor passes
 async function getUserVisitorPasses(userId) {
     return await withOracleDB(async (connection) => {
-        const userResult = await connection.execute(
-            `SELECT * FROM Users u
-            WHERE u.ID = :userId`,
-            {userId},
-            { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
-        if (userResult.rows.length <= 0) {
-            return { success: false, message: "User does not exist"};
-        }
+        try {
+            const result = await connection.execute(
+                `SELECT 
+                    vp.PASS_ID,
+                    vp.VALID_TIME,
+                    vp.STATUS,
+                    vp.CREATED_AT,
+                    vp.VISITOR_PLATE,
+                    CASE 
+                        WHEN CURRENT_TIMESTAMP < vp.CREATED_AT + NUMTODSINTERVAL(vp.VALID_TIME, 'HOUR') 
+                        THEN 'active' 
+                        ELSE 'expired' 
+                    END as CURRENT_STATUS
+                 FROM VisitorPasses vp
+                 WHERE vp.USER_ID = :userId
+                 ORDER BY vp.CREATED_AT DESC`,
+                { userId },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
 
-        const passResult = await connection.execute(
-            `SELECT * FROM VisitorPasses v
-            WHERE v.USER_ID = :userId`,
-            {userId},
-            { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
-        const passes = [];
-        if (passResult.rows.length > 0) {
-            passResult.rows.forEach(row => {
-                if (row.PASS_ID) {
-                    passes.push({
+            if (result.rows.length > 0) {
+                const visitorPasses = result.rows.map(row => {
+                    // 计算通行证有效期
+                    const validTime = new Date(row.CREATED_AT);
+                    validTime.setHours(validTime.getHours() + row.VALID_TIME);
+                    
+                    return {
                         visitorPassId: row.PASS_ID,
-                        validTime: row.VALID_TIME.toISOString().replace('T', ' ').substring(0, 19),
-                        status: row.STATUS
-                    });
-                }
-            });
+                        validTime: validTime.toISOString().replace('T', ' ').substring(0, 19),
+                        status: row.CURRENT_STATUS,
+                        createdAt: row.CREATED_AT.toISOString().replace('T', ' ').substring(0, 19),
+                        plate: row.VISITOR_PLATE || 'Not assigned'
+                    };
+                });
 
-            return { success: true, visitorPasses:passes };
-        } 
-        return { success: false, message: "User does not have visitor passes"};
-    }).catch((error) => {
-        return { success: false, message: "Get visitor passes error" };
+                return {
+                    success: true,
+                    visitorPasses: visitorPasses
+                };
+            }
+            return { 
+                success: true,
+                visitorPasses: []
+            };
+        } catch (error) {
+            console.error('Get visitor passes error:', error);
+            return { success: false, message: 'Failed to get visitor passes' };
+        }
     });
 }
 
-// 3.2 apply for visitor passes
-async function applyVisitorPasses(userId,validTime) {
+// 3.2 Apply for visitor passes
+async function applyVisitorPasses(userId, hours, visitorPlate) {
     return await withOracleDB(async (connection) => {
         try {
-            // check if user already exist
+            // 检查用户是否存在
             const userResult = await connection.execute(
                 `SELECT * FROM Users WHERE ID = :userId`,
                 { userId },
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
-            if (userResult.rows.length <= 0) {
-                return { success: false, message: "User does not exist"};
+            
+            if (userResult.rows.length === 0) {
+                return { success: false, message: 'User not found' };
+            }
+            
+            // 检查用户配额
+            const quotaResult = await connection.execute(
+                `SELECT COUNT(*) as active_passes
+                 FROM VisitorPasses 
+                 WHERE USER_ID = :userId 
+                 AND STATUS = 'active'
+                 AND VALID_TIME = :hours`,
+                { userId, hours },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            const activePasses = quotaResult.rows[0].ACTIVE_PASSES;
+            let maxPasses;
+            
+            // 根据通行证时长设置最大配额
+            if (hours === 8) {
+                maxPasses = 5;
+            } else if (hours === 24) {
+                maxPasses = 3;
+            } else if (hours === 48) {
+                maxPasses = 1;
+            } else {
+                return { success: false, message: 'Invalid pass duration' };
+            }
+            
+            if (activePasses >= maxPasses) {
+                return { success: false, message: 'Pass quota exceeded' };
             }
 
-            const result = await connection.execute(
-                `INSERT INTO VisitorPasses (USER_ID, VALID_TIME) 
-                 VALUES (:userId, TO_TIMESTAMP(:validTime, 'YYYY-MM-DD HH24:MI:SS')) 
-                 RETURNING PASS_ID, VALID_TIME, STATUS INTO :passId, :returnedValidTime, :returnedStatus`,
-                {
-                    userId,
-                    validTime,
-                    passId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
-                    returnedValidTime: { dir: oracledb.BIND_OUT, type: oracledb.DATE },
-                    returnedStatus: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
-                }
-            );
-            const visitorPassId = result.outBinds.passId[0];
-            const returnedValidTime = new Date(result.outBinds.returnedValidTime[0]);
-            const returnedStatus = result.outBinds.returnedStatus[0];
-            // Commit the transaction
-            await connection.commit();
+            // 解析车牌号
+            const [province, licensePlate] = visitorPlate.split('-');
+            if (!province || !licensePlate) {
+                return { success: false, message: 'Invalid visitor plate format' };
+            }
 
-            return {
-                success: true,
+            // 计算停车结束时间
+            const parkingUntil = new Date();
+            parkingUntil.setHours(parkingUntil.getHours() + hours);
+            const parkingUntilStr = parkingUntil.toISOString().replace('T', ' ').substring(0, 19);
+            
+            // 1. 创建访客通行证
+            const passResult = await connection.execute(
+                `INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE)
+                 VALUES (:userId, :hours, 'active', :visitorPlate)
+                 RETURNING PASS_ID INTO :passId`,
+                { 
+                    userId, 
+                    hours,
+                    visitorPlate,
+                    passId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+                },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            if (!passResult.outBinds.passId) {
+                return { success: false, message: 'Failed to create visitor pass' };
+            }
+
+            // 2. 在Vehicles表中添加或更新车辆记录
+            const vehicleResult = await connection.execute(
+                `MERGE INTO Vehicles v
+                 USING DUAL ON (v.PROVINCE = :province AND v.LICENSE_PLATE = :licensePlate)
+                 WHEN MATCHED THEN
+                    UPDATE SET 
+                        USER_ID = :userId,
+                        PARKING_UNTIL = TO_TIMESTAMP(:parkingUntil, 'YYYY-MM-DD HH24:MI:SS')
+                 WHEN NOT MATCHED THEN
+                    INSERT (USER_ID, PROVINCE, LICENSE_PLATE, PARKING_UNTIL)
+                    VALUES (:userId, :province, :licensePlate, TO_TIMESTAMP(:parkingUntil, 'YYYY-MM-DD HH24:MI:SS'))`,
+                { 
+                    userId,
+                    province,
+                    licensePlate,
+                    parkingUntil: parkingUntilStr
+                },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+
+            // 3. 获取更新后的通行证信息
+            const updatedPass = await connection.execute(
+                `SELECT 
+                    vp.PASS_ID,
+                    vp.VALID_TIME,
+                    vp.STATUS,
+                    vp.VISITOR_PLATE,
+                    vp.CREATED_AT
+                 FROM VisitorPasses vp
+                 WHERE vp.PASS_ID = :passId`,
+                {
+                    passId: passResult.outBinds.passId
+                },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            // 提交事务
+            await connection.commit();
+            
+            return { 
+                success: true, 
+                message: 'Visitor pass created and vehicle registered successfully',
                 visitorPass: {
-                    visitorPassId: visitorPassId,
-                    validTime:returnedValidTime.toISOString().replace('T', ' ').substring(0, 19),
-                    status: returnedStatus
+                    passId: passResult.outBinds.passId,
+                    validTime: hours,
+                    status: 'active',
+                    visitorPlate: visitorPlate,
+                    createdAt: updatedPass.rows[0].CREATED_AT.toISOString().replace('T', ' ').substring(0, 19),
+                    parkingUntil: parkingUntilStr
                 }
             };
         } catch (error) {
+            console.error('Apply visitor passes error:', error);
             return { success: false, message: 'Server error' };
+        }
+    });
+}
+
+// 3.3 get user's visitor pass quota and usage history
+async function getUserVisitorPassQuota(userId) {
+    return await withOracleDB(async (connection) => {
+        try {
+            // First, check if user exists and is a resident
+            const userResult = await connection.execute(
+                `SELECT * FROM Users u
+                WHERE u.ID = :userId AND u.USER_TYPE = 'resident'`,
+                {userId},
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            if (userResult.rows.length <= 0) {
+                return { success: false, message: "User does not exist or is not a resident"};
+            }
+
+            // Define pass types and quotas
+            const passTypes = [
+                { type: "8 hour", hours: 8, total: 5 },
+                { type: "24 hour", hours: 24, total: 3 },
+                { type: "Weekend", hours: 48, total: 1 }
+            ];
+            
+            // Get active passes counts grouped by type
+            const activePassesResult = await connection.execute(
+                `SELECT 
+                    VALID_TIME,
+                    COUNT(*) AS active_count
+                FROM VisitorPasses vp
+                WHERE vp.USER_ID = :userId
+                AND vp.STATUS = 'active'
+                AND CURRENT_TIMESTAMP < vp.CREATED_AT + NUMTODSINTERVAL(vp.VALID_TIME, 'HOUR')
+                GROUP BY VALID_TIME`,
+                {userId},
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            // Create a map of active passes by type
+            const activePassesByType = {};
+            activePassesResult.rows.forEach(row => {
+                activePassesByType[row.VALID_TIME] = row.ACTIVE_COUNT;
+            });
+            
+            // Calculate remaining quota for each pass type
+            const quotaWithRemaining = passTypes.map(passType => ({
+                ...passType,
+                remaining: Math.max(0, passType.total - (activePassesByType[passType.hours] || 0))
+            }));
+            
+            // Get pass usage history (both active and expired)
+            const passHistoryResult = await connection.execute(
+                `SELECT 
+                    vp.PASS_ID,
+                    vp.VALID_TIME,
+                    vp.STATUS,
+                    vp.CREATED_AT,
+                    vp.VISITOR_PLATE,
+                    CASE 
+                        WHEN CURRENT_TIMESTAMP < vp.CREATED_AT + NUMTODSINTERVAL(vp.VALID_TIME, 'HOUR') 
+                        THEN 'active' 
+                        ELSE 'expired' 
+                    END as CURRENT_STATUS
+                FROM VisitorPasses vp
+                WHERE vp.USER_ID = :userId
+                ORDER BY vp.CREATED_AT DESC`,
+                {userId},
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            // Format pass history data
+            const passHistory = passHistoryResult.rows.map(row => {
+                // Convert hours to display format
+                let passTypeDisplay = "";
+                switch(row.VALID_TIME) {
+                    case 8:
+                        passTypeDisplay = "8 hour";
+                        break;
+                    case 24:
+                        passTypeDisplay = "24 hour";
+                        break;
+                    case 48:
+                        passTypeDisplay = "Weekend";
+                        break;
+                    default:
+                        passTypeDisplay = `${row.VALID_TIME} hour`;
+                }
+                
+                return {
+                    passId: row.PASS_ID,
+                    passType: passTypeDisplay,
+                    hours: row.VALID_TIME,
+                    createdAt: row.CREATED_AT.toISOString().replace('T', ' ').substring(0, 19),
+                    status: row.CURRENT_STATUS,
+                    visitorPlate: row.VISITOR_PLATE
+                };
+            });
+            
+            return { 
+                success: true, 
+                quota: quotaWithRemaining,
+                passHistory: passHistory 
+            };
+        } catch (error) {
+            console.error('Get visitor pass quota error:', error);
+            return { success: false, message: "Failed to get visitor pass quota" };
         }
     });
 }
@@ -712,5 +921,6 @@ module.exports = {
     createPayment,
     getUserPayments,
     adminLogin,
-    generateReport
+    generateReport,
+    getUserVisitorPassQuota
 };

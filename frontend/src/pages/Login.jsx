@@ -52,7 +52,7 @@ const Login = () => {
         }
 
         try {
-            console.log('Attempting login with:', { phone: loginCredentials.phone });
+            console.log('Logging in with credentials:', { phone: loginCredentials.phone, endpoint: API_ENDPOINTS.login });
             const response = await fetch(API_ENDPOINTS.login, {
                 method: 'POST',
                 headers: {
@@ -65,26 +65,37 @@ const Login = () => {
                 }),
             });
 
-            console.log('Response status:', response.status);
-            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            console.log('Login response status:', response.status);
+            console.log('Login response headers:', Object.fromEntries(response.headers.entries()));
 
             let data;
             try {
                 const text = await response.text();
-                console.log('Raw response:', text);
+                console.log('Raw login response:', text);
                 
                 if (!text) {
                     throw new Error('Server returned empty response');
                 }
-                data = JSON.parse(text);
-                console.log('Parsed response:', data);
+                
+                try {
+                    data = JSON.parse(text);
+                    console.log('Parsed login response:', data);
+                } catch (parseError) {
+                    console.error('Failed to parse response as JSON:', parseError);
+                    toast({
+                        title: "Server Error",
+                        description: "Server returned invalid data format. Please try again.",
+                        variant: "destructive",
+                    });
+                    return;
+                }
             } catch (error) {
-                console.error('Failed to parse response:', error);
-                throw new Error('Invalid server response format');
+                console.error('Failed to read response:', error);
+                throw new Error('Failed to read server response');
             }
 
             if (!response.ok) {
-                throw new Error(data.message || `Server error (${response.status})`);
+                throw new Error(data?.message || `Server error (${response.status})`);
             }
 
             if (data.success) {

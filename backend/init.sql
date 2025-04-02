@@ -98,11 +98,28 @@ CREATE TABLE Users (
 INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE) VALUES
 ('1234567890', 'password', 'Admin User', 'admin', 'resident');
 
+-- Resident Users
 INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
 ('9876543210', 'password', 'Resident User', 'user', 'resident', 101);
 
--- INSERT INTO Users(NAME,PHONE,PASSWORD,USER_TYPE,UNIT_NUMBER,HOST_INFORMATION,ROLE)
---              VALUES('hello','1111111111','password','resident',100,'s','user');
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
+('1112223333', 'password', 'John Smith', 'user', 'resident', 102);
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
+('2223334444', 'password', 'Emily Johnson', 'user', 'resident', 103);
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
+('3334445555', 'password', 'Michael Brown', 'user', 'resident', 104);
+
+-- Visitor Users
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, HOST_INFORMATION) VALUES
+('4445556666', 'password', 'Sarah Wilson', 'user', 'visitor', 'Visiting Unit 101');
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, HOST_INFORMATION) VALUES
+('5556667777', 'password', 'David Lee', 'user', 'visitor', 'Visiting Unit 102');
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, HOST_INFORMATION) VALUES
+('6667778888', 'password', 'Jessica Garcia', 'user', 'visitor', 'Visiting Unit 103');
 
 -- Create ParkingLot table
 CREATE TABLE ParkingLot (
@@ -146,12 +163,48 @@ CREATE TABLE Vehicles (
 CREATE TABLE VisitorPasses (
     PASS_ID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     USER_ID NUMBER NOT NULL,
-    VALID_TIME TIMESTAMP NOT NULL,
+    VALID_TIME NUMBER NOT NULL, -- Stores duration in hours (8, 24, 48)
     STATUS VARCHAR2(20) DEFAULT 'active',
     CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    VISITOR_PLATE VARCHAR2(30),
     CONSTRAINT fk_visitor_passes_user_id FOREIGN KEY (USER_ID) REFERENCES Users(ID),
     CONSTRAINT chk_visitor_pass_status CHECK (STATUS IN ('active', 'expired'))
 );
+
+-- Insert visitor passes for the first resident user (User ID 2)
+-- 8 hour pass - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (2, 8, 'BC-AB123CD');
+
+-- 24 hour pass - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (2, 24, 'WA-KDA1233');
+
+-- Weekend pass (48 hours) - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (2, 48, 'CA-FSD1234');
+
+-- 8 hour pass - expired
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (2, 0, 'expired', 'ON-OFN2312');
+
+-- Insert visitor passes for the second resident user (User ID 3)
+-- 8 hour pass - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (3, 8, 'NY-FAB7680');
+
+-- 24 hour pass - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (3, 24, 'AB-CD123AD');
+
+-- Insert visitor passes for the third resident user (User ID 4)
+-- Weekend pass (48 hours) - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (4, 48, 'SK-FA123DF');
+
+-- 8 hour pass - expired
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (4, 0, 'expired', 'MO-1A3489');
 
 -- Create Violations table
 CREATE TABLE Violations (
