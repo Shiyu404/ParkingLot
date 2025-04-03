@@ -114,7 +114,6 @@ const Login = () => {
                 } else if (data.user.role === 'user' && data.user.userType === 'visitor') {
                     navigate('/visitor-dashboard');
                 } else {
-                    // 如果角色不匹配，导航到首页
                     navigate('/');
                     toast({
                         title: "Navigation Error",
@@ -385,7 +384,7 @@ const Login = () => {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="resident">Resident</SelectItem>
-                                                <SelectItem value="visitor">Visitor</SelectItem>
+                                                {/* <SelectItem value="visitor">Visitor</SelectItem> */}
                                             </SelectContent>
                                         </Select>
                                     </div>
