@@ -4,8 +4,8 @@ export const API_BASE_URL = '/api';  // Use /api prefix to match Vite proxy conf
 // API Endpoints
 export const API_ENDPOINTS = {
     // Authentication related
-    login: '/api/login',
-    register: '/api/register',
+    login: '/api/users/login',
+    register: '/api/users/register',
     
     // Admin related
     occupancy: '/api/admin/occupancy',
