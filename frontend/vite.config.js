@@ -18,42 +18,42 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => {
-          console.log('【代理调试】原始路径:', path);
+          // console.log('[Proxy Debug] Original path:', path);
           const rewritten = path.replace(/^\/api/, '');
-          console.log('【代理调试】重写后路径:', rewritten);
+          // console.log('[Proxy Debug] Rewritten path:', rewritten);
           return rewritten;
         },
         configure: (proxy) => {
           proxy.on('error', (err) => {
-            console.log('【代理调试】代理错误:', err);
+            // console.log('[Proxy Debug] Proxy error:', err);
           });
           proxy.on('proxyReq', (proxyReq, req) => {
-            console.log('【代理调试】发送请求到目标:', req.method, req.url);
-            console.log('【代理调试】完整目标URL:', proxyReq.path);
-            console.log('【代理调试】请求头:', proxyReq.getHeaders());
+            // console.log('[Proxy Debug] Sending request to target:', req.method, req.url);
+            // console.log('[Proxy Debug] Complete target URL:', proxyReq.path);
+            // console.log('[Proxy Debug] Request headers:', proxyReq.getHeaders());
             if (req.body) {
               const bodyData = JSON.stringify(req.body);
-              console.log('【代理调试】请求体:', bodyData);
+              // console.log('[Proxy Debug] Request body:', bodyData);
               proxyReq.setHeader('Content-Type', 'application/json');
               proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
               proxyReq.write(bodyData);
             }
           });
           proxy.on('proxyRes', (proxyRes, req) => {
-            console.log('【代理调试】收到目标响应:', proxyRes.statusCode, req.url);
-            console.log('【代理调试】响应头:', proxyRes.headers);
+            // console.log('[Proxy Debug] Received target response:', proxyRes.statusCode, req.url);
+            // console.log('[Proxy Debug] Response headers:', proxyRes.headers);
             let body = '';
             proxyRes.on('data', (chunk) => {
               body += chunk;
             });
             proxyRes.on('end', () => {
-              console.log('【代理调试】响应体:', body);
+              // console.log('[Proxy Debug] Response body:', body);
               if (body && body.trim() !== '' && proxyRes.statusCode !== 304) {
                 try {
                   JSON.parse(body);
                 } catch (e) {
-                  console.error('【代理调试】无效的JSON响应:', e);
-                  console.error('【代理调试】无法修复响应体，因为proxyRes.end不是函数');
+                  console.error('[Proxy Debug] Invalid JSON response:', e);
+                  console.error('[Proxy Debug] Cannot fix response body because proxyRes.end is not a function');
                 }
               }
             });
