@@ -688,6 +688,7 @@ async function getAllParkingLots() {
         FROM ParkingLot p
         LEFT JOIN Vehicles v ON v.CURRENT_LOT_ID = p.LOT_ID
         GROUP BY p.LOT_ID, p.TOTAL_SPACES, p.AVAILABLE_SPACES
+        HAVING MAX(p.TOTAL_SPACES) >= MIN(p.TOTAL_SPACES)
         ORDER BY p.LOT_ID
     `;
     return await withOracleDB(async (connection) => {
@@ -706,16 +707,26 @@ async function getAllParkingLots() {
 async function getParkingLotById(lotId) {
     const query = `
         SELECT 
-            p.LOT_ID as lotId,
-            p.TOTAL_SPACES as capacity,
-            p.AVAILABLE_SPACES as currentRemain,
-            (p.TOTAL_SPACES - p.AVAILABLE_SPACES) as currentOccupancy,
+            sub.lotId,
+            sub.capacity,
+            sub.currentRemain,
+            sub.currentOccupancy,
             v.PROVINCE,
             v.LICENSE_PLATE,
             v.PARKING_UNTIL
-        FROM ParkingLot p
-        LEFT JOIN Vehicles v ON v.CURRENT_LOT_ID = p.LOT_ID
-        WHERE p.LOT_ID = :1
+        FROM (
+            SELECT 
+                p.LOT_ID AS lotId,
+                p.TOTAL_SPACES AS capacity,
+                p.AVAILABLE_SPACES AS currentRemain,
+                (p.TOTAL_SPACES - p.AVAILABLE_SPACES) AS currentOccupancy,
+                COUNT(*) AS count1 
+            FROM ParkingLot p
+            WHERE p.LOT_ID = :1
+            GROUP BY p.LOT_ID, p.TOTAL_SPACES, p.AVAILABLE_SPACES
+        ) sub
+        LEFT JOIN Vehicles v
+            ON v.CURRENT_LOT_ID = sub.lotId
     `;
     return await withOracleDB(async (connection) => {
         const result = await connection.execute(query, [lotId]);
@@ -750,8 +761,19 @@ async function getUserViolations(userId, startDate, endDate) {
             v.LICENSE_PLATE,
             v.STATUS
         FROM Violations v
-        JOIN Vehicles ve ON v.PROVINCE = ve.PROVINCE AND v.LICENSE_PLATE = ve.LICENSE_PLATE
+        JOIN Vehicles ve ON v.PROVINCE = ve.PROVINCE
+                        AND v.LICENSE_PLATE = ve.LICENSE_PLATE
         WHERE ve.USER_ID = :1
+        AND NOT EXISTS (
+            SELECT ve2.VEHICLE_ID
+            FROM Vehicles ve2
+            WHERE ve2.USER_ID = ve.USER_ID
+            MINUS
+            SELECT ve3.VEHICLE_ID
+            FROM Vehicles ve3
+            WHERE ve3.USER_ID = ve.USER_ID
+        )
+        ORDER BY v.TIME DESC
     `;
     const params = [userId];
     
