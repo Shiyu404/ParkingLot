@@ -53,4 +53,9 @@ export const API_ENDPOINTS = {
     verifyVehicle: (plate, region, lotId) =>
         `/api/verify-vehicle?plate=${encodeURIComponent(plate)}&region=${encodeURIComponent(region)}&lotId=${encodeURIComponent(lotId)}`,
     
+    // Vehicle related
+    getUserVehicles: (userId) => `/api/vehicles/user/${userId}`,
+    getAllVehicles: '/api/vehicles/all',
+    registerVehicle: '/api/vehicles',
+    deleteVehicle: (province, licensePlate) => `/api/vehicles/${encodeURIComponent(province)}/${encodeURIComponent(licensePlate)}`,
 }; 

@@ -348,6 +348,40 @@ async function registerVehicle(userId,province,licensePlate,lotId,parkingUntil) 
     });
 }
 
+// 2.3 Delete vehicle
+async function deleteVehicle(province, licensePlate) {
+    return await withOracleDB(async (connection) => {
+        // Check if vehicle exists
+        const checkResult = await connection.execute(
+            `SELECT * FROM Vehicles WHERE PROVINCE = :province AND LICENSE_PLATE = :licensePlate`,
+            { province, licensePlate },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        
+        if (checkResult.rows.length === 0) {
+            return { success: false, message: "Vehicle not found" };
+        }
+        
+        // Delete the vehicle
+        const deleteResult = await connection.execute(
+            `DELETE FROM Vehicles WHERE PROVINCE = :province AND LICENSE_PLATE = :licensePlate`,
+            { province, licensePlate },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        
+        await connection.commit();
+        
+        if (deleteResult.rowsAffected === 0) {
+            return { success: false, message: "Failed to delete vehicle" };
+        }
+        
+        return { success: true, message: "Vehicle deleted successfully" };
+    }).catch((error) => {
+        console.error('Error deleting vehicle:', error);
+        return { success: false, message: "Server error" };
+    });
+}
+
 // 3.1 Get user's visitor passes
 async function getUserVisitorPasses(userId) {
     return await withOracleDB(async (connection) => {
@@ -1579,6 +1613,59 @@ async function getActiveVehiclesByLotId(lotId) {
     });
 }
 
+// 获取所有车辆
+async function getAllVehicles() {
+    return await withOracleDB(async (connection) => {
+        try {
+            const query = `
+                SELECT 
+                    v.VEHICLE_ID,
+                    v.PROVINCE,
+                    v.LICENSE_PLATE,
+                    v.PARKING_UNTIL,
+                    v.CURRENT_LOT_ID,
+                    v.USER_ID,
+                    u.NAME as USER_NAME,
+                    u.UNIT_NUMBER
+                FROM 
+                    Vehicles v
+                JOIN
+                    Users u ON v.USER_ID = u.ID
+                ORDER BY 
+                    v.VEHICLE_ID
+            `;
+
+            const result = await connection.execute(
+                query,
+                {},
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+
+            const vehicles = result.rows.map(row => ({
+                vehicleId: row.VEHICLE_ID,
+                province: row.PROVINCE,
+                licensePlate: row.LICENSE_PLATE,
+                parkingUntil: row.PARKING_UNTIL.toISOString().replace('T', ' ').substring(0, 19),
+                currentLotId: row.CURRENT_LOT_ID,
+                userId: row.USER_ID,
+                userName: row.USER_NAME,
+                unitNumber: row.UNIT_NUMBER
+            }));
+
+            return {
+                success: true,
+                vehicles: vehicles
+            };
+        } catch (error) {
+            console.error('Error fetching all vehicles:', error);
+            return {
+                success: false,
+                message: error.message || 'Failed to fetch vehicles'
+            };
+        }
+    });
+}
+
 module.exports = {
     testOracleConnection,
     loginUser,
@@ -1605,5 +1692,7 @@ module.exports = {
     findViolationsByPlate,
     getViolationById,
     getActiveVehiclesByLotId,
-    getAllPayments
+    getAllPayments,
+    deleteVehicle,
+    getAllVehicles
 };
