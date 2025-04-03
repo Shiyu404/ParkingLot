@@ -193,13 +193,30 @@ async function registerUser(name, phone, password, userType, unitNumber, hostInf
 
             // Commit the transaction
             await connection.commit();
-
+            
             // Check if the user exists now
             const result1 = await connection.execute(
                 `SELECT * FROM Users WHERE phone = :phone AND password = :password`,
                 { phone, password },
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
+            const tempId = result1.rows[0].ID;
+            const result2 = await connection.executeMany(
+                `INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (:tempId, :validTime, :status)`,
+                [
+                    [tempId, 8, 'not_used'],
+                    [tempId, 8, 'not_used'],
+                    [tempId, 8, 'not_used'],
+                    [tempId, 8, 'not_used'],
+                    [tempId, 8, 'not_used'],
+                    [tempId, 24, 'not_used'],
+                    [tempId, 24, 'not_used'],
+                    [tempId, 24, 'not_used'],
+                    [tempId, 48, 'not_used']
+                ],
+                { autoCommit: true }
+            );
+            await connection.commit();
 
             if (result1.rows.length > 0) {
                 const user = result1.rows[0];
