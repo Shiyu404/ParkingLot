@@ -391,7 +391,6 @@ const Login = () => {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="resident">Resident</SelectItem>
-                                                <SelectItem value="visitor">Visitor</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

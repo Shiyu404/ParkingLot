@@ -159,12 +159,12 @@ const VisitorRequest = () => {
             
             const userData = await userResponse.json();
             
-            if (!userData.success || !userData.user || !userData.user.id) {
+            if (!userData.success || !userData.user || !userData.user.ID) {
                 throw new Error(userData.message || 'Visitor registration failed');
             }
             
             // Step 2: Register vehicle
-            const userId = userData.user.id;
+            const userId = userData.user.ID;
             const now = new Date();
             
             // Do not set valid time as it needs resident approval

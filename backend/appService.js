@@ -161,16 +161,6 @@ async function loginUser(phone, password) {
 async function registerUser(name, phone, password, userType, unitNumber, hostInformation, role) {
     return await withOracleDB(async (connection) => {
         try {
-            // check if phone already exist
-            const phoneResult = await connection.execute(
-                `SELECT PHONE FROM Users 
-                 WHERE PHONE = :phone`,
-                 {phone},
-                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
-            );
-            if (phoneResult.rows.length > 0){
-                return { success: false, message: 'Phone number should be unique' };
-            }
             // check userType and unitNumber/hostInformation
             if((userType == "resident"&&unitNumber == null )){
                 return { success: false, message: 'Resident should have unitNumber' };
@@ -416,14 +406,16 @@ async function getUserVisitorPasses(userId) {
                 `SELECT 
                     vp.PASS_ID,
                     vp.VALID_TIME,
-                    vp.STATUS,
+                    vp.STATUS as original_status,
                     vp.CREATED_AT,
                     vp.VISITOR_PLATE,
                     CASE 
+                        WHEN vp.STATUS = 'not_used' THEN 'not_used'
                         WHEN CURRENT_TIMESTAMP < vp.CREATED_AT + NUMTODSINTERVAL(vp.VALID_TIME, 'HOUR') 
                         THEN 'active' 
                         ELSE 'expired' 
-                    END as CURRENT_STATUS
+                    END as CURRENT_STATUS,
+                    vp.VALID_TIME as hours
                  FROM VisitorPasses vp
                  WHERE vp.USER_ID = :userId
                  ORDER BY vp.CREATED_AT DESC`,
@@ -434,15 +426,16 @@ async function getUserVisitorPasses(userId) {
             if (result.rows.length > 0) {
                 const visitorPasses = result.rows.map(row => {
                     // Calculate pass validity period
-                    const validTime = new Date(row.CREATED_AT);
-                    validTime.setHours(validTime.getHours() + row.VALID_TIME);
+                    const createdAt = new Date(row.CREATED_AT);
+                    const validTime = new Date(createdAt.getTime() + (row.VALID_TIME * 60 * 60 * 1000));
                     
                     return {
                         visitorPassId: row.PASS_ID,
-                        validTime: validTime.toISOString().replace('T', ' ').substring(0, 19),
-                        status: row.CURRENT_STATUS,
-                        createdAt: row.CREATED_AT.toISOString().replace('T', ' ').substring(0, 19),
-                        plate: row.VISITOR_PLATE || 'Not assigned'
+                        validTime: validTime.toISOString(),
+                        status: row.ORIGINAL_STATUS,
+                        createdAt: row.CREATED_AT.toISOString(),
+                        plate: row.VISITOR_PLATE || 'Not assigned',
+                        hours: row.VALID_TIME
                     };
                 });
 
@@ -485,13 +478,13 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                 `SELECT COUNT(*) as active_passes
                  FROM VisitorPasses 
                  WHERE USER_ID = :userId 
-                 AND STATUS = 'active'
+                 AND STATUS = 'not_used'
                  AND VALID_TIME = :hours`,
                 { userId, hours },
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
 
-            const activePasses = quotaResult.rows[0].ACTIVE_PASSES;
+            const availablePasses = quotaResult.rows[0].ACTIVE_PASSES;
             let maxPasses;
 
             if (hours === 8) {
@@ -505,12 +498,41 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                 return { success: false, message: 'Invalid pass duration' };
             }
 
-            console.log('Current active passes:', activePasses, 'Max passes:', maxPasses);
+            console.log('Available passes:', availablePasses);
 
-            if (activePasses >= maxPasses) {
-                console.log('Pass quota exceeded');
-                return { success: false, message: 'Pass quota exceeded' };
+            if (availablePasses === 0) {
+                console.log('No available passes');
+                return { success: false, message: 'No available passes of this type' };
             }
+
+            // Get an available pass
+            const getPassResult = await connection.execute(
+                `SELECT PASS_ID 
+                 FROM VisitorPasses 
+                 WHERE USER_ID = :userId 
+                 AND STATUS = 'not_used' 
+                 AND VALID_TIME = :hours 
+                 AND ROWNUM = 1`,
+                { userId, hours },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+
+            if (!getPassResult.rows || getPassResult.rows.length === 0) {
+                console.log('Failed to get available pass');
+                return { success: false, message: 'Failed to get available pass' };
+            }
+
+            const passId = getPassResult.rows[0].PASS_ID;
+
+            // Update the pass status and add visitor plate
+            await connection.execute(
+                `UPDATE VisitorPasses 
+                 SET STATUS = 'active',
+                     VISITOR_PLATE = :visitorPlate,
+                     CREATED_AT = CURRENT_TIMESTAMP
+                 WHERE PASS_ID = :passId`,
+                { visitorPlate, passId }
+            );
 
             // Parse license plate
             const [province, licensePlate] = visitorPlate.split('-');
@@ -521,35 +543,8 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
 
             // Calculate parking end time
             const parkingUntil = new Date();
-            parkingUntil.setHours(parkingUntil.getHours() + hours); // Changed from 24 to hours
+            parkingUntil.setHours(parkingUntil.getHours() + hours);
             const parkingUntilStr = parkingUntil.toISOString().replace('T', ' ').substring(0, 19);
-
-            // Create visitor pass
-            const passIdOut = { type: oracledb.NUMBER, dir: oracledb.BIND_OUT };
-
-            const passResult = await connection.execute(
-                `BEGIN
-                    INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE)
-                    VALUES (:userId, :hours, 'active', :visitorPlate)
-                    RETURNING PASS_ID INTO :passId;
-                END;`,
-                {
-                    userId,
-                    hours,
-                    visitorPlate,
-                    passId: passIdOut
-                },
-                { outFormat: oracledb.OUT_FORMAT_OBJECT }
-            );
-
-            const newPassId = passResult.outBinds.passId[0];
-
-            if (!newPassId) {
-                console.log('Failed to create visitor pass - no pass ID returned');
-                return { success: false, message: 'Failed to create visitor pass' };
-            }
-
-            console.log('Created visitor pass with ID:', newPassId);
 
             // Upsert vehicle
             await connection.execute(
@@ -567,11 +562,10 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                     province,
                     licensePlate,
                     parkingUntil: parkingUntilStr
-                },
-                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+                }
             );
 
-            // Get inserted pass info
+            // Get updated pass info
             const updatedPassResult = await connection.execute(
                 `SELECT 
                     PASS_ID,
@@ -581,12 +575,12 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                     CREATED_AT
                  FROM VisitorPasses
                  WHERE PASS_ID = :passId`,
-                { passId: newPassId },
+                { passId },
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
 
             if (!updatedPassResult.rows || updatedPassResult.rows.length === 0) {
-                console.log('Failed to retrieve visitor pass after creation');
+                console.log('Failed to retrieve visitor pass after update');
                 return { success: false, message: 'Failed to retrieve visitor pass' };
             }
 
@@ -597,7 +591,7 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
 
             return {
                 success: true,
-                message: 'Visitor pass created and vehicle registered successfully',
+                message: 'Visitor pass activated and vehicle registered successfully',
                 visitorPass: {
                     passId: updatedPass.PASS_ID,
                     validTime: updatedPass.VALID_TIME,
@@ -1142,9 +1136,9 @@ async function registerVisitor(fullName, phone, unitToVisit, region, licensePlat
             
             const userId = userResult.outBinds.userId;
             
-            // Calculate parking end time (default 24 hours, can be modified as needed)
+ 
             const parkingUntil = new Date();
-            parkingUntil.setHours(parkingUntil.getHours() + 24); // Add 24 hours
+            parkingUntil.setHours(parkingUntil.getHours() + 8);
             const parkingUntilStr = parkingUntil.toISOString().replace('T', ' ').substring(0, 19);
             
             // 2. Insert into Vehicles table

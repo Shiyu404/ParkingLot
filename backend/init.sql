@@ -19,7 +19,7 @@ DROP TABLE Users CASCADE CONSTRAINTS;
 -- Create Users table
 CREATE TABLE Users (
     ID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    PHONE VARCHAR2(20) UNIQUE NOT NULL,
+    PHONE VARCHAR2(20) NOT NULL,
     PASSWORD VARCHAR2(100) NOT NULL,
     NAME VARCHAR2(100) NOT NULL,
     ROLE VARCHAR2(20) NOT NULL,
@@ -101,41 +101,41 @@ CREATE TABLE VisitorPasses (
     PASS_ID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     USER_ID NUMBER NOT NULL,
     VALID_TIME NUMBER NOT NULL, -- Stores duration in hours (8, 24, 48)
-    STATUS VARCHAR2(20) DEFAULT 'active',
+    STATUS VARCHAR2(20) DEFAULT 'not_used',
     CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     VISITOR_PLATE VARCHAR2(30),
     CONSTRAINT fk_visitor_passes_user_id FOREIGN KEY (USER_ID) REFERENCES Users(ID),
-    CONSTRAINT chk_visitor_pass_status CHECK (STATUS IN ('active', 'expired'))
+    CONSTRAINT chk_visitor_pass_status CHECK (STATUS IN ('not_used', 'active', 'expired'))
 );
 
 -- Insert visitor passes for user ID 6 without plates
--- 8 hour passes - active (5)
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'active');
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'active');
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'active');
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'active');
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'active');
+-- 8 hour passes - not_used (5)
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'not_used');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'not_used');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'not_used');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'not_used');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'not_used');
 
--- 24 hour passes - active (3)
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 24, 'active');
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 24, 'active');
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 24, 'active');
+-- 24 hour passes - not_used (3)
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 24, 'not_used');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 24, 'not_used');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 24, 'not_used');
 
--- 48 hour pass - active (1)
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 48, 'active');
+-- 48 hour pass - not_used (1)
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 48, 'not_used');
 
 -- Insert visitor passes for the first resident user (User ID 2)
 -- 8 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (2, 8, 'BC-AB123CD');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (2, 8, 'active', 'BC-AB123CD');
 
 -- 24 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (2, 24, 'WA-KDA1233');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (2, 24, 'active', 'WA-KDA1233');
 
 -- Weekend pass (48 hours) - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (2, 48, 'CA-FSD1234');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (2, 48, 'active', 'CA-FSD1234');
 
 -- 8 hour pass - expired
 INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
@@ -143,17 +143,17 @@ VALUES (2, 0, 'expired', 'ON-OFN2312');
 
 -- Insert visitor passes for the second resident user (User ID 3)
 -- 8 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (3, 8, 'NY-FAB7680');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (3, 8, 'active', 'NY-FAB7680');
 
 -- 24 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (3, 24, 'AB-CD123AD');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (3, 24, 'active', 'AB-CD123AD');
 
 -- Insert visitor passes for the third resident user (User ID 4)
 -- Weekend pass (48 hours) - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (4, 48, 'SK-FA123DF');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (4, 48, 'active', 'SK-FA123DF');
 
 -- 8 hour pass - expired
 INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 

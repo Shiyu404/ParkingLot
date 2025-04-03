@@ -71,13 +71,17 @@ export default function ResidentDashboard() {
   };
   
   const processVisitorPasses = (passes) => {
-    // Process active passes
-    const active = passes.filter(pass => pass.status === 'active');
+    // Process active passes (only those with assigned plates)
+    const active = passes.filter(pass => 
+      pass.status === 'active' && 
+      pass.plate && 
+      pass.plate !== 'Not assigned'
+    );
     
     // Convert active passes data for display
     const activeForDisplay = active.map(pass => ({
       id: pass.visitorPassId,
-      plate: pass.plate || 'Not assigned',
+      plate: pass.plate,
       timeRemaining: formatTimeRemaining(pass.validTime),
       passType: getPassTypeFromHours(pass.hours || 24),
       validTime: pass.validTime
@@ -117,7 +121,7 @@ export default function ResidentDashboard() {
     try {
       const validTime = new Date(validTimeStr);
       const now = new Date();
-      const diff = validTime - now;
+      const diff = validTime.getTime() - now.getTime();
       
       if (diff <= 0) return 'Expired';
       
@@ -129,6 +133,7 @@ export default function ResidentDashboard() {
       }
       return `${minutes}m remaining`;
     } catch (e) {
+      console.error('Error formatting time:', e);
       return 'Unknown';
     }
   };
@@ -142,9 +147,9 @@ export default function ResidentDashboard() {
       passCountByType[type.type] = 0;
     });
     
-    // Count active passes
+    // Count not_used passes
     passes.forEach(pass => {
-      if (pass.status === 'active') {
+      if (pass.status === 'not_used') {
         const passType = getPassTypeFromHours(pass.hours || 24);
         if (passCountByType[passType] !== undefined) {
           passCountByType[passType]++;
@@ -157,7 +162,7 @@ export default function ResidentDashboard() {
       id: type.id,
       type: type.type,
       total: type.total,
-      remaining: Math.max(0, type.total - (passCountByType[type.type] || 0))
+      remaining: passCountByType[type.type] || 0
     }));
     
     setVisitorPasses(quotaWithRemaining);
@@ -203,7 +208,7 @@ export default function ResidentDashboard() {
         });
         setLicensePlate('');
         setRegionCode('');
-        // 立即重新获取数据
+
         await fetchVisitorPasses();
       } else {
         toast({
@@ -248,26 +253,28 @@ export default function ResidentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {activeVisitors.length === 0 ? (
+              {activeVisitors.filter(visitor => visitor.plate !== 'Not assigned').length === 0 ? (
                 <div className="text-center text-muted-foreground">
                   No active visitor passes
                 </div>
               ) : (
-                activeVisitors.map(visitor => (
-                  <div key={visitor.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="font-medium">{visitor.plate}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {visitor.passType}
+                activeVisitors
+                  .filter(visitor => visitor.plate !== 'Not assigned')
+                  .map(visitor => (
+                    <div key={visitor.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="font-medium">{visitor.plate}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {/* {visitor.passType} */}
+                          </div>
+                        </div>
+                        <div className="text-sm text-green-600">
+                          {visitor.timeRemaining}
                         </div>
                       </div>
-                      <div className="text-sm text-green-600">
-                        {visitor.timeRemaining}
-                      </div>
                     </div>
-                  </div>
-                ))
+                  ))
               )}
             </div>
           </CardContent>
@@ -321,9 +328,6 @@ export default function ResidentDashboard() {
                       className="w-full justify-between"
                     >
                       <span>{pass.type}</span>
-                      <span className="text-muted-foreground">
-                        {pass.remaining}/{pass.total} remaining
-                      </span>
                     </Button>
                   ))}
                 </div>
