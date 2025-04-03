@@ -99,19 +99,25 @@ const Login = () => {
             }
 
             if (data.success) {
+                // Ensure user data has the correct ID field
+                const userData = {
+                    ...data.user,
+                    ID: data.user.ID // Ensure ID is present and in uppercase
+                };
+                
                 // Login successful
-                login(data.user.role === 'user' ? data.user.userType : data.user.role, data.user);
+                login(userData.role === 'user' ? userData.userType : userData.role, userData);
                 toast({
                     title: "Login Successful",
-                    description: `Welcome back, ${data.user.name}`,
+                    description: `Welcome back, ${userData.name}`,
                 });
                 
                 // Navigate based on user role
-                if (data.user.role === 'admin') {
+                if (userData.role === 'admin') {
                     navigate('/dashboard');
-                } else if (data.user.role === 'user' && data.user.userType === 'resident') {
+                } else if (userData.role === 'user' && userData.userType === 'resident') {
                     navigate('/resident-dashboard');
-                } else if (data.user.role === 'user' && data.user.userType === 'visitor') {
+                } else if (userData.role === 'user' && userData.userType === 'visitor') {
                     navigate('/visitor-dashboard');
                 } else {
                     // 如果角色不匹配，导航到首页

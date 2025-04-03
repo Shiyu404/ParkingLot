@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // Create the context
@@ -18,12 +17,14 @@ export const AuthProvider = ({ children }) => {
 
     // Login function
     const login = (role, userData) => {
-        // In a real app, this would communicate with your backend
+        // Ensure all user data is preserved while maintaining required fields
         const newUser = {
-            id: userData?.id || Math.random().toString(36).substring(2, 9),
-            name: userData?.name || 'User',
+            ...userData,
+            ID: userData.ID,  // Ensure ID is preserved
             role: role,
-            unitNumber: userData?.unitNumber,
+            name: userData.name,
+            unitNumber: userData.unitNumber,
+            userType: userData.userType
         };
 
         // Store user in local storage

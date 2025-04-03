@@ -1,94 +1,20 @@
--- Drop existing tables if they exist
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE ParkingRecord CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN
-      IF SQLCODE != -942 THEN
-         RAISE;
-      END IF;
-END;
+-- Delete data to avoid FK constraint issues
+DELETE FROM Staff;
+DELETE FROM Payments;
+DELETE FROM Violations;
+DELETE FROM VisitorPasses;
+DELETE FROM Vehicles;
+DELETE FROM ParkingLot;
+DELETE FROM Users;
 
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE ParkingLot CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN
-      IF SQLCODE != -942 THEN
-         RAISE;
-      END IF;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE Users CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN
-      IF SQLCODE != -942 THEN
-         RAISE;
-      END IF;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE Vehicles CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN
-      IF SQLCODE != -942 THEN
-         RAISE;
-      END IF;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE VisitorPasses CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN
-      IF SQLCODE != -942 THEN
-         RAISE;
-      END IF;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE Violations CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN
-      IF SQLCODE != -942 THEN
-         RAISE;
-      END IF;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE Payments CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN
-      IF SQLCODE != -942 THEN
-         RAISE;
-      END IF;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE Staff CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN
-      IF SQLCODE != -942 THEN
-         RAISE;
-      END IF;
-END;
-/
-
-BEGIN
-   EXECUTE IMMEDIATE 'DROP TABLE ParkingLotInfo CASCADE CONSTRAINTS';
-EXCEPTION
-   WHEN OTHERS THEN
-      IF SQLCODE != -942 THEN
-         RAISE;
-      END IF;
-END;
-/
+-- Drop tables in reverse dependency order
+DROP TABLE Staff CASCADE CONSTRAINTS;
+DROP TABLE Payments CASCADE CONSTRAINTS;
+DROP TABLE Violations CASCADE CONSTRAINTS;
+DROP TABLE VisitorPasses CASCADE CONSTRAINTS;
+DROP TABLE Vehicles CASCADE CONSTRAINTS;
+DROP TABLE ParkingLot CASCADE CONSTRAINTS;
+DROP TABLE Users CASCADE CONSTRAINTS;
 
 -- Create Users table
 CREATE TABLE Users (
@@ -143,6 +69,95 @@ INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, HOST_INFORMATION) VAL
 
 INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, HOST_INFORMATION) VALUES
 ('6667778888', 'password', 'Jessica Garcia', 'user', 'visitor', 'Visiting Unit 103');
+
+-- Additional Resident Users
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
+('7778889999', 'password', 'Robert Wilson', 'user', 'resident', 105);
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
+('8889990000', 'password', 'Jennifer Davis', 'user', 'resident', 106);
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
+('9990001111', 'password', 'William Taylor', 'user', 'resident', 107);
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
+('0001112222', 'password', 'Elizabeth Anderson', 'user', 'resident', 108);
+
+-- Additional Visitor Users
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, HOST_INFORMATION) VALUES
+('1112223334', 'password', 'Thomas Martinez', 'user', 'visitor', 'Visiting Unit 105');
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, HOST_INFORMATION) VALUES
+('2223334445', 'password', 'Patricia Robinson', 'user', 'visitor', 'Visiting Unit 106');
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, HOST_INFORMATION) VALUES
+('3334445556', 'password', 'Christopher White', 'user', 'visitor', 'Visiting Unit 107');
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, HOST_INFORMATION) VALUES
+('4445556667', 'password', 'Nancy Harris', 'user', 'visitor', 'Visiting Unit 108');
+
+-- Create VisitorPasses table
+CREATE TABLE VisitorPasses (
+    PASS_ID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    USER_ID NUMBER NOT NULL,
+    VALID_TIME NUMBER NOT NULL, -- Stores duration in hours (8, 24, 48)
+    STATUS VARCHAR2(20) DEFAULT 'active',
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    VISITOR_PLATE VARCHAR2(30),
+    CONSTRAINT fk_visitor_passes_user_id FOREIGN KEY (USER_ID) REFERENCES Users(ID),
+    CONSTRAINT chk_visitor_pass_status CHECK (STATUS IN ('active', 'expired'))
+);
+
+-- Insert visitor passes for user ID 6 without plates
+-- 8 hour passes - active (5)
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'active');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'active');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'active');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'active');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 8, 'active');
+
+-- 24 hour passes - active (3)
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 24, 'active');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 24, 'active');
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 24, 'active');
+
+-- 48 hour pass - active (1)
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS) VALUES (6, 48, 'active');
+
+-- Insert visitor passes for the first resident user (User ID 2)
+-- 8 hour pass - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (2, 8, 'BC-AB123CD');
+
+-- 24 hour pass - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (2, 24, 'WA-KDA1233');
+
+-- Weekend pass (48 hours) - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (2, 48, 'CA-FSD1234');
+
+-- 8 hour pass - expired
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (2, 0, 'expired', 'ON-OFN2312');
+
+-- Insert visitor passes for the second resident user (User ID 3)
+-- 8 hour pass - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (3, 8, 'NY-FAB7680');
+
+-- 24 hour pass - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (3, 24, 'AB-CD123AD');
+
+-- Insert visitor passes for the third resident user (User ID 4)
+-- Weekend pass (48 hours) - active
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
+VALUES (4, 48, 'SK-FA123DF');
+
+-- 8 hour pass - expired
+INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
+VALUES (4, 0, 'expired', 'MO-1A3489');
 
 -- Create ParkingLot table
 CREATE TABLE ParkingLot (
@@ -210,53 +225,6 @@ VALUES (2, 'ON', 'EXPIRED', SYSTIMESTAMP - INTERVAL '1' DAY, 1);
 
 INSERT INTO Vehicles (USER_ID, PROVINCE, LICENSE_PLATE, PARKING_UNTIL, CURRENT_LOT_ID)
 VALUES (3, 'BC', 'OLD123', SYSTIMESTAMP - INTERVAL '2' DAY, 2);
-
--- Create VisitorPasses table
-CREATE TABLE VisitorPasses (
-    PASS_ID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    USER_ID NUMBER NOT NULL,
-    VALID_TIME NUMBER NOT NULL, -- Stores duration in hours (8, 24, 48)
-    STATUS VARCHAR2(20) DEFAULT 'active',
-    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    VISITOR_PLATE VARCHAR2(30),
-    CONSTRAINT fk_visitor_passes_user_id FOREIGN KEY (USER_ID) REFERENCES Users(ID),
-    CONSTRAINT chk_visitor_pass_status CHECK (STATUS IN ('active', 'expired'))
-);
-
--- Insert visitor passes for the first resident user (User ID 2)
--- 8 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (2, 8, 'BC-AB123CD');
-
--- 24 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (2, 24, 'WA-KDA1233');
-
--- Weekend pass (48 hours) - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (2, 48, 'CA-FSD1234');
-
--- 8 hour pass - expired
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
-VALUES (2, 0, 'expired', 'ON-OFN2312');
-
--- Insert visitor passes for the second resident user (User ID 3)
--- 8 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (3, 8, 'NY-FAB7680');
-
--- 24 hour pass - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (3, 24, 'AB-CD123AD');
-
--- Insert visitor passes for the third resident user (User ID 4)
--- Weekend pass (48 hours) - active
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, VISITOR_PLATE) 
-VALUES (4, 48, 'SK-FA123DF');
-
--- 8 hour pass - expired
-INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE) 
-VALUES (4, 0, 'expired', 'MO-1A3489');
 
 -- Create Violations table
 CREATE TABLE Violations (

@@ -43,7 +43,7 @@ export default function ResidentDashboard() {
   
   // Fetch visitor passes data
   useEffect(() => {
-    if (user?.id) {
+    if (user?.ID) {
       fetchVisitorPasses();
     }
   }, [user]);
@@ -51,7 +51,7 @@ export default function ResidentDashboard() {
   const fetchVisitorPasses = async () => {
     try {
       setLoading(true);
-      const response = await fetch(API_ENDPOINTS.getUserVisitorPasses(user.id));
+      const response = await fetch(API_ENDPOINTS.getUserVisitorPasses(user.ID));
       const data = await response.json();
       
       if (data.success) {
@@ -188,7 +188,7 @@ export default function ResidentDashboard() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id,
+          userId: user.ID,
           hours: selectedPass.hours,
           visitorPlate
         }),

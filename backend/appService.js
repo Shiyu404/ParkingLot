@@ -31,7 +31,7 @@ async function closePoolAndExit() {
     }
 }
 
-initializeConnectionPool();
+// initializeConnectionPool();
 
 process
     .once('SIGTERM', closePoolAndExit)
@@ -117,14 +117,14 @@ async function initializeDatabase() {
     });
 }
 
-// Call database initialization when the application starts
-initializeDatabase().then(success => {
-    if (success) {
-        console.log('Database initialized successfully');
-    } else {
-        console.error('Failed to initialize database');
-    }
-});
+// // Call database initialization when the application starts
+// initializeDatabase().then(success => {
+//     if (success) {
+//         console.log('Database initialized successfully');
+//     } else {
+//         console.error('Failed to initialize database');
+//     }
+// });
 
 //1.1 Log in
 async function loginUser(phone, password) {
@@ -140,7 +140,7 @@ async function loginUser(phone, password) {
             return {
                 success: true,
                 user: {
-                    id: user.ID,
+                    ID: user.ID,
                     phone: user.PHONE,
                     name: user.NAME,
                     role: user.ROLE,
@@ -216,7 +216,7 @@ async function registerUser(name, phone, password, userType, unitNumber, hostInf
                 return {
                     success: true,
                     user: {
-                        id: user.ID,
+                        ID: user.ID,
                         name: user.NAME,
                         userType: user.USER_TYPE
                     }
@@ -243,7 +243,7 @@ async function getUserInformation(userId) {
         );
         if (result.rows.length > 0) {
             const userInfo = {
-                id: result.rows[0].ID,
+                ID: result.rows[0].ID,
                 phone: result.rows[0].PHONE,
                 name: result.rows[0].NAME,
                 role: result.rows[0].ROLE,
@@ -466,17 +466,20 @@ async function getUserVisitorPasses(userId) {
 async function applyVisitorPasses(userId, hours, visitorPlate) {
     return await withOracleDB(async (connection) => {
         try {
+            console.log('Applying visitor pass with params:', { userId, hours, visitorPlate });
+            
             // Check if user exists
             const userResult = await connection.execute(
                 `SELECT * FROM Users WHERE ID = :userId`,
                 { userId },
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
-            
+
             if (userResult.rows.length === 0) {
+                console.log('User not found:', userId);
                 return { success: false, message: 'User not found' };
             }
-            
+
             // Check user quota
             const quotaResult = await connection.execute(
                 `SELECT COUNT(*) as active_passes
@@ -487,11 +490,10 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                 { userId, hours },
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
-            
+
             const activePasses = quotaResult.rows[0].ACTIVE_PASSES;
             let maxPasses;
-            
-            // Set maximum quota based on pass duration
+
             if (hours === 8) {
                 maxPasses = 5;
             } else if (hours === 24) {
@@ -499,44 +501,58 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
             } else if (hours === 48) {
                 maxPasses = 1;
             } else {
+                console.log('Invalid pass duration:', hours);
                 return { success: false, message: 'Invalid pass duration' };
             }
-            
+
+            console.log('Current active passes:', activePasses, 'Max passes:', maxPasses);
+
             if (activePasses >= maxPasses) {
+                console.log('Pass quota exceeded');
                 return { success: false, message: 'Pass quota exceeded' };
             }
 
             // Parse license plate
             const [province, licensePlate] = visitorPlate.split('-');
             if (!province || !licensePlate) {
+                console.log('Invalid visitor plate format:', visitorPlate);
                 return { success: false, message: 'Invalid visitor plate format' };
             }
 
-            // Calculate parking end time (default 24 hours, can be modified as needed)
+            // Calculate parking end time
             const parkingUntil = new Date();
-            parkingUntil.setHours(parkingUntil.getHours() + 24); // Add 24 hours
+            parkingUntil.setHours(parkingUntil.getHours() + hours); // Changed from 24 to hours
             const parkingUntilStr = parkingUntil.toISOString().replace('T', ' ').substring(0, 19);
-            
-            // 1. Create visitor pass
+
+            // Create visitor pass
+            const passIdOut = { type: oracledb.NUMBER, dir: oracledb.BIND_OUT };
+
             const passResult = await connection.execute(
-                `INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE)
-                 VALUES (:userId, :hours, 'active', :visitorPlate)
-                 RETURNING PASS_ID INTO :passId`,
-                { 
-                    userId, 
+                `BEGIN
+                    INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE)
+                    VALUES (:userId, :hours, 'active', :visitorPlate)
+                    RETURNING PASS_ID INTO :passId;
+                END;`,
+                {
+                    userId,
                     hours,
                     visitorPlate,
-                    passId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+                    passId: passIdOut
                 },
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
-            
-            if (!passResult.outBinds.passId) {
+
+            const newPassId = passResult.outBinds.passId[0];
+
+            if (!newPassId) {
+                console.log('Failed to create visitor pass - no pass ID returned');
                 return { success: false, message: 'Failed to create visitor pass' };
             }
 
-            // 2. Add or update vehicle record in Vehicles table
-            const vehicleResult = await connection.execute(
+            console.log('Created visitor pass with ID:', newPassId);
+
+            // Upsert vehicle
+            await connection.execute(
                 `MERGE INTO Vehicles v
                  USING DUAL ON (v.PROVINCE = :province AND v.LICENSE_PLATE = :licensePlate)
                  WHEN MATCHED THEN
@@ -546,7 +562,7 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                  WHEN NOT MATCHED THEN
                     INSERT (USER_ID, PROVINCE, LICENSE_PLATE, PARKING_UNTIL)
                     VALUES (:userId, :province, :licensePlate, TO_TIMESTAMP(:parkingUntil, 'YYYY-MM-DD HH24:MI:SS'))`,
-                { 
+                {
                     userId,
                     province,
                     licensePlate,
@@ -555,43 +571,49 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
 
-            // 3. Get updated pass information
-            const updatedPass = await connection.execute(
+            // Get inserted pass info
+            const updatedPassResult = await connection.execute(
                 `SELECT 
-                    vp.PASS_ID,
-                    vp.VALID_TIME,
-                    vp.STATUS,
-                    vp.VISITOR_PLATE,
-                    vp.CREATED_AT
-                 FROM VisitorPasses vp
-                 WHERE vp.PASS_ID = :passId`,
-                {
-                    passId: passResult.outBinds.passId
-                },
+                    PASS_ID,
+                    VALID_TIME,
+                    STATUS,
+                    VISITOR_PLATE,
+                    CREATED_AT
+                 FROM VisitorPasses
+                 WHERE PASS_ID = :passId`,
+                { passId: newPassId },
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
-            
-            // Commit transaction
+
+            if (!updatedPassResult.rows || updatedPassResult.rows.length === 0) {
+                console.log('Failed to retrieve visitor pass after creation');
+                return { success: false, message: 'Failed to retrieve visitor pass' };
+            }
+
+            const updatedPass = updatedPassResult.rows[0];
+
+            // Commit
             await connection.commit();
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 message: 'Visitor pass created and vehicle registered successfully',
                 visitorPass: {
-                    passId: passResult.outBinds.passId,
-                    validTime: hours,
-                    status: 'active',
-                    visitorPlate: visitorPlate,
-                    createdAt: updatedPass.rows[0].CREATED_AT.toISOString().replace('T', ' ').substring(0, 19),
+                    passId: updatedPass.PASS_ID,
+                    validTime: updatedPass.VALID_TIME,
+                    status: updatedPass.STATUS,
+                    visitorPlate: updatedPass.VISITOR_PLATE,
+                    createdAt: updatedPass.CREATED_AT.toISOString().replace('T', ' ').substring(0, 19),
                     parkingUntil: parkingUntilStr
                 }
             };
         } catch (error) {
             console.error('Apply visitor passes error:', error);
-            return { success: false, message: 'Server error' };
+            return { success: false, message: error.message || 'Server error' };
         }
     });
 }
+
 
 // 3.3 get user's visitor pass quota and usage history
 async function getUserVisitorPassQuota(userId) {
@@ -1156,7 +1178,7 @@ async function registerVisitor(fullName, phone, unitToVisit, region, licensePlat
                 success: true,
                 message: 'Visitor information recorded successfully',
                 user: {
-                    id: userId,
+                    ID: userId,
                     name: fullName,
                     phone,
                     unitToVisit,
@@ -1208,7 +1230,7 @@ async function verifyVehicle(plate, region, lotId) {
 
         // Vehicle exists, return detailed information
         const vehicle = {
-            id: result.rows[0].VEHICLE_ID,
+            ID: result.rows[0].VEHICLE_ID,
             licensePlate: result.rows[0].LICENSE_PLATE,
             province: result.rows[0].PROVINCE,
             userId: result.rows[0].USER_ID,
@@ -1713,6 +1735,26 @@ async function getAllVehicles() {
         }
     });
 }
+
+async function startApp() {
+    try {
+        await initializeConnectionPool(); // 等待连接池启动
+        console.log('✅ OracleDB connection pool initialized');
+
+        const dbInitSuccess = await initializeDatabase(); // 再初始化数据库
+        if (dbInitSuccess) {
+            console.log('✅ Database initialized using init.sql');
+        } else {
+            console.error('❌ Database initialization failed');
+        }
+
+    } catch (err) {
+        console.error('❌ Error during startup:', err);
+    }
+}
+
+startApp();
+
 
 module.exports = {
     testOracleConnection,

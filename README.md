@@ -20,26 +20,8 @@ ssh yourCWL@remote.students.cs.ubc.ca
 ```bash
 cd ~/backend
 ```
-5. Login into SQLPlus
 
-```bash
-sqlplus ora_cwl@stu
-aYourStudentID
-```
-
-6. Initial SQL
-
-```bash
-@init.sql
-```
-
-7. Create new terminal and goto backend
-
-```bash
-cd ~/backend
-```
-
-8. Start the backend server:
+5. Start the backend server:
 
 ```bash
 sh ./remote-start.sh
@@ -60,20 +42,14 @@ cd frontend
 ```bash
 yarn install
 ```
-3. Change vite.config.js
 
-```bash
-proxy: {
-      '/api': {
-        target: 'http://localhost:50XXX', // change to your server port#
-```
-4. Open another terminal window and set up SSH tunnel:
+3. Open another terminal window and set up SSH tunnel:
 
 ```bash
 sh ./scripts/mac/server-tunnel.sh
 ```
 
-5. Start the frontend development server:
+4. Start the frontend development server:
 
 ```bash
 yarn dev
