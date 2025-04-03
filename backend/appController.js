@@ -794,5 +794,36 @@ function isValidCardNumber(cardNumber) {
     return /^\d{13,19}$/.test(cardNumber);
 }
 
+//2.3 Delete vehicle
+router.delete('/vehicles/:province/:licensePlate', async (req, res) => {
+    try {
+        const { province, licensePlate } = req.params;
+        const result = await appService.deleteVehicle(province, licensePlate);
+        
+        if (result.success) {
+            res.status(200).json(result);
+        } else {
+            res.status(400).json({ success: false, message: result.message });
+        }
+    } catch (error) {
+        console.error('Delete vehicle error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// 获取所有车辆
+router.get('/vehicles/all', async (req, res) => {
+    try {
+        const result = await appService.getAllVehicles();
+        if (result.success) {
+            res.status(200).json(result);
+        } else {
+            res.status(500).json({ success: false, message: result.message });
+        }
+    } catch (error) {
+        console.error('Get all vehicles error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
 
 module.exports = router;
