@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
     // Authentication related
     login: '/api/users/login',
     register: '/api/users/register',
+    users: '/api/users',    
     
     // Admin related
     occupancy: '/api/admin/occupancy',

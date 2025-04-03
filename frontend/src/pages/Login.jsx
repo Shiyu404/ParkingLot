@@ -99,25 +99,19 @@ const Login = () => {
             }
 
             if (data.success) {
-                // Ensure user data has the correct ID field
-                const userData = {
-                    ...data.user,
-                    ID: data.user.ID // Ensure ID is present and in uppercase
-                };
-                
                 // Login successful
-                login(userData.role === 'user' ? userData.userType : userData.role, userData);
+                login(data.user.role === 'user' ? data.user.userType : data.user.role, data.user);
                 toast({
                     title: "Login Successful",
-                    description: `Welcome back, ${userData.name}`,
+                    description: `Welcome back, ${data.user.name}`,
                 });
                 
                 // Navigate based on user role
-                if (userData.role === 'admin') {
+                if (data.user.role === 'admin') {
                     navigate('/dashboard');
-                } else if (userData.role === 'user' && userData.userType === 'resident') {
+                } else if (data.user.role === 'user' && data.user.userType === 'resident') {
                     navigate('/resident-dashboard');
-                } else if (userData.role === 'user' && userData.userType === 'visitor') {
+                } else if (data.user.role === 'user' && data.user.userType === 'visitor') {
                     navigate('/visitor-dashboard');
                 } else {
                     // 如果角色不匹配，导航到首页
@@ -391,6 +385,7 @@ const Login = () => {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="resident">Resident</SelectItem>
+                                                <SelectItem value="visitor">Visitor</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

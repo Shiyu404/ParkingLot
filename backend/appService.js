@@ -261,6 +261,82 @@ async function getUserInformation(userId) {
     });
 }
 
+// 1.4 Update user information
+async function updateUser(userId, name, phone, password) {
+    return await withOracleDB(async (connection) => {
+        try {
+            // First check if the user exists
+            const userCheck = await connection.execute(
+                `SELECT * FROM Users WHERE ID = :userId`,
+                { userId },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            if (userCheck.rows.length === 0) {
+                return { success: false, message: "User does not exist" };
+            }
+            
+            // Prepare the SQL query based on which fields are being updated
+            let sql = 'UPDATE Users SET ';
+            const params = { userId };
+            const updateFields = [];
+            
+            if (name) {
+                updateFields.push('NAME = :name');
+                params.name = name;
+            }
+            
+            if (phone) {
+                updateFields.push('PHONE = :phone');
+                params.phone = phone;
+            }
+            
+            if (password) {
+                updateFields.push('PASSWORD = :password');
+                params.password = password;
+            }
+            
+            // If no fields to update, return early
+            if (updateFields.length === 0) {
+                return { success: false, message: "No fields to update" };
+            }
+            
+            sql += updateFields.join(', ') + ' WHERE ID = :userId';
+            
+            // Execute the update query
+            const result = await connection.execute(sql, params);
+            
+            // Commit the changes
+            await connection.commit();
+            
+            if (result.rowsAffected === 0) {
+                return { success: false, message: "Failed to update user information" };
+            }
+            
+            // Get the updated user information
+            const updatedUser = await connection.execute(
+                `SELECT * FROM Users WHERE ID = :userId`,
+                { userId },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            return { 
+                success: true, 
+                user: {
+                    ID: updatedUser.rows[0].ID,
+                    phone: updatedUser.rows[0].PHONE,
+                    name: updatedUser.rows[0].NAME,
+                    role: updatedUser.rows[0].ROLE,
+                    userType: updatedUser.rows[0].USER_TYPE
+                }
+            };
+        } catch (error) {
+            console.error('Update user error:', error);
+            return { success: false, message: "Server error" };
+        }
+    });
+}
+
 // 2.1 Get user's vehicles information
 async function getUserVehiclesInformation(userId) {
     return await withOracleDB(async (connection) => {
@@ -1755,6 +1831,7 @@ module.exports = {
     loginUser,
     registerUser,
     getUserInformation,
+    updateUser,
     getUserVehiclesInformation,
     registerVehicle,
     getUserVisitorPasses,

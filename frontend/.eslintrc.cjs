@@ -3,13 +3,14 @@ module.exports = {
   env: {
     browser: true,
     es2020: true,
+    node: true,
   },
   extends: [
     'eslint:recommended',
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs'],
+  ignorePatterns: ['dist', '.eslintrc.cjs', '*.jsx'],
   parserOptions: {
     ecmaFeatures: {
       jsx: true,
@@ -17,6 +18,7 @@ module.exports = {
     ecmaVersion: 2020,
     sourceType: 'module',
   },
+  parser: '@babel/eslint-parser',
   settings: {
     react: {
       version: 'detect',

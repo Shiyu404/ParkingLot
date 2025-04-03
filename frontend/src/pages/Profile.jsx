@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,17 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Phone, Mail, Home, Car } from 'lucide-react';
+import { User, Phone, Mail, Home } from 'lucide-react';
+import { API_ENDPOINTS } from '@/config';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const { toast } = useToast();
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
-    email: 'user@example.com', // Placeholder
-    phone: '',
-    unitNumber: user?.unitNumber || '',
+    phone: user?.phone || '',
+    password: '',
+    confirmPassword: '',
   });
 
   const handleChange = (e) => {
@@ -24,16 +24,66 @@ const Profile = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // In a real app, this would update the user profile in your backend
-    console.log('Profile update submitted:', formData);
-    
-    toast({
-      title: "Profile Updated",
-      description: "Your profile information has been updated successfully.",
-    });
+    // Validate password match if password is being updated
+    if (formData.password || formData.confirmPassword) {
+      if (formData.password !== formData.confirmPassword) {
+        toast({
+          title: "Error",
+          description: "Passwords do not match.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    try {
+      const response = await fetch(`${API_ENDPOINTS.users}/${user.ID}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+          password: formData.password || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update user context with new information using login function
+        login(user.role, {
+          ...user,
+          name: data.user.name,
+          phone: data.user.phone,
+        });
+
+        // Reset password fields
+        setFormData(prev => ({
+          ...prev,
+          password: '',
+          confirmPassword: '',
+        }));
+
+        toast({
+          title: "Profile Updated",
+          description: "Your profile information has been updated successfully.",
+        });
+      } else {
+        throw new Error(data.message || 'Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Profile update error:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -58,20 +108,7 @@ const Profile = () => {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email
-                </Label>
-                <Input 
-                  id="email" 
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
+                  required
                 />
               </div>
               
@@ -85,7 +122,37 @@ const Profile = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="Enter your phone number"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  New Password (Optional)
+                </Label>
+                <Input 
+                  id="password" 
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Leave blank to keep current password"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Confirm New Password
+                </Label>
+                <Input 
+                  id="confirmPassword" 
+                  name="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirm new password"
                 />
               </div>
               
@@ -98,9 +165,8 @@ const Profile = () => {
                   <Input 
                     id="unitNumber" 
                     name="unitNumber"
-                    value={formData.unitNumber}
-                    onChange={handleChange}
-                    placeholder="Enter your unit number"
+                    value={user.unitNumber}
+                    disabled
                   />
                 </div>
               )}

@@ -134,6 +134,23 @@ router.get('/users/:userId', async (req, res) => {
     }
 });
 
+//1.4 Update user information
+router.put('/users/:userId', async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId, 10);
+        const { name, phone, password } = req.body;
+        const result = await appService.updateUser(userId, name, phone, password);
+        if (result.success) {
+            res.status(200).json(result);
+        } else {
+            res.status(400).json({ success: false, message: result.message });
+        }
+    } catch (error) {
+        console.error('Update user error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 //2.1 Get user's vehicles information
 router.get('/vehicles/user/:userId', async (req, res) => {
     try {
