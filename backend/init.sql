@@ -109,6 +109,18 @@ CREATE TABLE Users (
 INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE) VALUES
 ('1234567890', 'password', 'Admin User', 'admin', 'resident');
 
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE) VALUES
+('8881112222', 'password', 'Admin Alice', 'admin', 'resident');
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE) VALUES
+('9992223333', 'password', 'Admin Bob', 'admin', 'resident');
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE) VALUES
+('7773334444', 'password', 'Admin Charlie', 'admin', 'resident');
+
+INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE) VALUES
+('6664445555', 'password', 'Admin Diana', 'admin', 'resident');
+
 -- Resident Users
 INSERT INTO Users (PHONE, PASSWORD, NAME, ROLE, USER_TYPE, UNIT_NUMBER) VALUES
 ('9876543210', 'password', 'Resident User', 'user', 'resident', 101);
@@ -385,7 +397,19 @@ CREATE TABLE Staff (
 
 -- Insert test staff
 INSERT INTO Staff (USER_ID, LOT_ID) 
-SELECT ID, 1 FROM Users WHERE ROLE = 'admin';
+SELECT ID, 1 FROM Users WHERE PHONE = '1234567890';
+
+INSERT INTO Staff (USER_ID, LOT_ID) 
+SELECT ID, 2 FROM Users WHERE PHONE = '8881112222';
+
+INSERT INTO Staff (USER_ID, LOT_ID) 
+SELECT ID, 3 FROM Users WHERE PHONE = '9992223333';
+
+INSERT INTO Staff (USER_ID, LOT_ID) 
+SELECT ID, 4 FROM Users WHERE PHONE = '7773334444';
+
+INSERT INTO Staff (USER_ID, LOT_ID) 
+SELECT ID, 5 FROM Users WHERE PHONE = '6664445555';
 
 -- Commit the changes
 COMMIT; 
