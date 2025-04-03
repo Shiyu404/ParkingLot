@@ -296,48 +296,115 @@ router.get('/parking-lots/:lotId', async (req, res) => {
     }
 });
 
-//5.1 get user violation
-router.get('/violations/user/:userId', async (req, res) => {
+// 获取所有违规记录，可选按停车场ID过滤
+router.get('/violations', async (req, res) => {
     try {
-        const { userId } = req.params;
-        const { startDate, endDate } = req.query;
-            
-        if (!userId) {
+        const lotId = req.query.lotId;
+        const startDate = req.query.startDate;
+        const endDate = req.query.endDate;
+
+        // 验证日期格式
+        if (startDate && !isValidDateFormat(startDate)) {
             return res.status(400).json({
                 success: false,
-                message: "Please provide a valid user ID in the URL"
+                message: 'Invalid startDate format. Please use YYYY-MM-DD'
             });
         }
 
-        if (startDate && !isValidDate(startDate)) {
+        if (endDate && !isValidDateFormat(endDate)) {
             return res.status(400).json({
                 success: false,
-                message: "Start date should be in ISO 8601 format (YYYY-MM-DD)"
+                message: 'Invalid endDate format. Please use YYYY-MM-DD'
             });
         }
-
-        if (endDate && !isValidDate(endDate)) {
-            return res.status(400).json({
+        
+        console.log(`Fetching violations. Filters: lotId=${lotId || 'none'}, startDate=${startDate || 'none'}, endDate=${endDate || 'none'}`);
+        
+        const result = await appService.getAllViolations(lotId, startDate, endDate);
+        
+        if (result.success) {
+            res.json({
+                success: true,
+                violations: result.violations
+            });
+        } else {
+            console.error('Error fetching violations:', result.message);
+            res.status(500).json({
                 success: false,
-                message: "End date should be in ISO 8601 format (YYYY-MM-DD)"
+                message: 'Failed to fetch violations',
+                error: result.message
             });
         }
-
-        const result = await appService.getUserViolations(userId, startDate, endDate);
-        res.status(200).json({
-            success: true,
-            data: {
-                violations: result
-            }
-        });
     } catch (error) {
-        console.error('Get violations error:', error);
+        console.error('Unexpected error in /violations route:', error);
         res.status(500).json({
             success: false,
-            message: "Failed to fetch user violations"
+            message: 'Internal server error',
+            error: error.message
         });
     }
 });
+
+// 获取所有支付记录
+router.get('/payments', async (req, res) => {
+    try {
+        const startDate = req.query.startDate;
+        const endDate = req.query.endDate;
+
+        // 验证日期格式
+        if (startDate && !isValidDateFormat(startDate)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid startDate format. Please use YYYY-MM-DD'
+            });
+        }
+
+        if (endDate && !isValidDateFormat(endDate)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid endDate format. Please use YYYY-MM-DD'
+            });
+        }
+        
+        console.log(`Fetching payment records. Filters: startDate=${startDate || 'none'}, endDate=${endDate || 'none'}`);
+        
+        const result = await appService.getAllPayments(startDate, endDate);
+        
+        if (result.success) {
+            res.json({
+                success: true,
+                payments: result.payments
+            });
+        } else {
+            console.error('Error fetching payments:', result.message);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch payment records',
+                error: result.message
+            });
+        }
+    } catch (error) {
+        console.error('Unexpected error in /payments route:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+});
+
+// 辅助函数：验证日期格式
+function isValidDateFormat(dateString) {
+    // 检查是否为ISO 8601格式（YYYY-MM-DD）
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
+    
+    // 进一步验证日期是否有效
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return false;
+    
+    return true;
+}
 
 // 4.1 Create a parking violation
 router.post('/violations', async (req, res) => {
@@ -602,13 +669,58 @@ router.post('/visitors/register', async (req, res) => {
     }
 });
 
-// 获取所有违规记录
-router.get('/violations', async (req, res) => {
+// 获取单个违规记录
+router.get('/violations/:id', async (req, res) => {
     try {
-        console.log('Fetching all violations');
+        const { id } = req.params;
         
-        // 调用服务层方法获取所有违规记录
-        const result = await appService.getAllViolations();
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required parameter: id'
+            });
+        }
+        
+        console.log(`Fetching violation with ID: ${id}`);
+        
+        // 调用服务层方法获取单个违规记录
+        const result = await appService.getViolationById(id);
+        
+        if (result.success) {
+            console.log(`Found violation: ${JSON.stringify(result.violation)}`);
+            res.status(200).json(result);
+        } else {
+            if (result.message.includes('No violation found')) {
+                res.status(404).json(result);
+            } else {
+                throw new Error(result.message);
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching violation by ID:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch violation data: ' + error.message
+        });
+    }
+});
+
+// 根据车牌和区域搜索违规记录
+router.get('/violations/search', async (req, res) => {
+    try {
+        const { plate, region } = req.query;
+        
+        if (!plate || !region) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required parameters: plate and region'
+            });
+        }
+        
+        console.log(`Searching violations by plate: ${plate}, region: ${region}`);
+        
+        // 调用服务层方法搜索违规记录
+        const result = await appService.findViolationsByPlate(plate, region);
         
         if (result.success) {
             // 处理字段名差异，确保一致的API响应
@@ -628,54 +740,46 @@ router.get('/violations', async (req, res) => {
                 violations: violations
             });
         } else {
-            // 处理服务层返回的错误
             throw new Error(result.message);
         }
     } catch (error) {
-        console.error('Error fetching violations:', error);
+        console.error('Error searching violations by plate:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to fetch violations data: ' + error.message
+            message: 'Failed to search violations: ' + error.message
         });
     }
 });
 
-// 更新违规记录状态
-router.put('/violations/:id/status', async (req, res) => {
+// 获取指定停车场的活跃车辆
+router.get('/active-vehicles/:lotId', async (req, res) => {
     try {
-        const { id } = req.params;
-        const { status } = req.body;
+        const { lotId } = req.params;
         
-        if (!id || !status) {
+        if (!lotId) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required parameters'
+                message: "请提供有效的停车场ID"
             });
         }
         
-        // 调用服务层方法更新状态
-        const result = await appService.updateViolationStatus(id, status);
+        console.log(`获取停车场ID ${lotId} 的活跃车辆`);
+        const result = await appService.getActiveVehiclesByLotId(lotId);
         
         if (result.success) {
-            console.log(`Updated violation #${id} status to ${status}`);
             res.status(200).json(result);
         } else {
-            // 如果记录未找到，返回404
-            if (result.message === 'Violation record not found') {
-                res.status(404).json(result);
-            } else if (result.message === 'Invalid status value') {
-                // 如果状态值无效，返回400
-                res.status(400).json(result);
-            } else {
-                // 其他错误返回500
-                res.status(500).json(result);
-            }
+            console.error('获取活跃车辆失败:', result.message);
+            res.status(500).json({
+                success: false,
+                message: result.message || "获取活跃车辆数据时发生错误"
+            });
         }
     } catch (error) {
-        console.error('Error updating violation status:', error);
+        console.error('获取活跃车辆路由错误:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to update violation status: ' + error.message
+            message: "服务器错误，无法获取活跃车辆数据"
         });
     }
 });

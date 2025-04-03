@@ -816,31 +816,49 @@ async function createPayment(amount, paymentMethod, cardNumber, userId, lotId, t
         VALUES (:1, :2, :3, :4, :5, :6, 'completed')
         RETURNING PAY_ID INTO :7
     `;
+    
+    // 打印参数类型信息以便调试
+    console.log('Payment parameters:', {
+        amount: { value: amount, type: typeof amount },
+        paymentMethod: { value: paymentMethod, type: typeof paymentMethod },
+        cardNumber: { value: cardNumber, type: typeof cardNumber },
+        userId: { value: userId, type: typeof userId },
+        lotId: { value: lotId, type: typeof lotId },
+        ticketId: { value: ticketId, type: typeof ticketId }
+    });
+    
     return await withOracleDB(async (connection) => {
-        const result = await connection.execute(query, {
-            bindDefs: [
-                { dir: oracledb.BIND_IN, type: oracledb.NUMBER, val: amount },
-                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: paymentMethod },
-                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: cardNumber },
-                { dir: oracledb.BIND_IN, type: oracledb.NUMBER, val: userId },
-                { dir: oracledb.BIND_IN, type: oracledb.STRING, val: lotId },
-                { dir: oracledb.BIND_IN, type: oracledb.NUMBER, val: ticketId },
-                { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
-            ]
-        });
-        
-        if (ticketId) {
-            await connection.execute(
-                `UPDATE Violations SET STATUS = 'paid' WHERE TICKET_ID = :1`,
-                [ticketId]
+        try {
+            // 不使用bindDefs，而是使用简单的参数数组
+            const result = await connection.execute(
+                query,
+                [
+                    amount,
+                    paymentMethod,
+                    cardNumber,
+                    userId,
+                    lotId,
+                    ticketId,
+                    { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+                ]
             );
+            
+            if (ticketId) {
+                await connection.execute(
+                    `UPDATE Violations SET STATUS = 'paid' WHERE TICKET_ID = :1`,
+                    [ticketId]
+                );
+            }
+            
+            return {
+                payId: result.outBinds[0],
+                amount,
+                status: 'completed'
+            };
+        } catch (error) {
+            console.error('Error in createPayment:', error);
+            throw error;
         }
-        
-        return {
-            payId: result.outBinds[0],
-            amount,
-            status: 'completed'
-        };
     });
 }
 
@@ -1143,13 +1161,13 @@ async function verifyVehicle(plate, region, lotId) {
     }
 }
 
-// 获取所有违规记录
-async function getAllViolations() {
+// 获取所有违规记录，可选按停车场ID和日期范围过滤
+async function getAllViolations(lotId, startDate, endDate) {
     let connection;
     try {
         connection = await oracledb.getConnection(dbConfig);
         
-        const query = `
+        let query = `
             SELECT 
                 v.TICKET_ID as TICKETID,
                 v.REASON,
@@ -1159,25 +1177,59 @@ async function getAllViolations() {
                 v.LICENSE_PLATE as LICENSEPLATE,
                 v.STATUS
             FROM Violations v
-            ORDER BY v.TIME DESC
+            WHERE 1=1
         `;
-
+        
+        const params = {};
+        
+        // 如果提供了停车场ID，添加过滤条件
+        if (lotId) {
+            query += ` AND v.LOT_ID = :lotId`;
+            params.lotId = parseInt(lotId, 10);
+        }
+        
+        // 如果提供了开始日期，添加过滤条件
+        if (startDate) {
+            query += ` AND v.TIME >= TO_TIMESTAMP(:startDate, 'YYYY-MM-DD')`;
+            params.startDate = startDate;
+        }
+        
+        // 如果提供了结束日期，添加过滤条件
+        if (endDate) {
+            query += ` AND v.TIME <= TO_TIMESTAMP(:endDate, 'YYYY-MM-DD') + INTERVAL '1' DAY - INTERVAL '1' SECOND`;
+            params.endDate = endDate;
+        }
+        
+        query += ` ORDER BY v.TIME DESC`;
+        
+        console.log("执行查询:", query);
+        console.log("参数:", params);
+        
         const result = await connection.execute(
             query,
-            {},
+            params,
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-
-        // 格式化响应
+        
+        console.log(`Found ${result.rows.length} violations`);
+        
         return {
             success: true,
-            violations: result.rows
+            violations: result.rows.map(row => ({
+                ticketId: row.TICKETID,
+                reason: row.REASON,
+                time: row.TIME,
+                lotId: row.LOTID,
+                province: row.PROVINCE,
+                licensePlate: row.LICENSEPLATE,
+                status: row.STATUS
+            }))
         };
     } catch (error) {
-        console.error('Error fetching all violations:', error);
+        console.error('Error getting violations:', error);
         return {
             success: false,
-            message: 'Database error while fetching violations: ' + error.message
+            message: 'Database error while getting violations: ' + error.message
         };
     } finally {
         if (connection) {
@@ -1186,6 +1238,102 @@ async function getAllViolations() {
                 console.log('Database connection closed successfully in getAllViolations');
             } catch (err) {
                 console.error('Error closing database connection in getAllViolations:', err);
+            }
+        }
+    }
+}
+
+// 获取所有支付记录，可选按日期范围过滤
+async function getAllPayments(startDate, endDate) {
+    let connection;
+    try {
+        connection = await oracledb.getConnection(dbConfig);
+        
+        let query = `
+            SELECT 
+                p.PAY_ID as payId,
+                p.AMOUNT as amount,
+                p.PAYMENT_METHOD as paymentMethod,
+                p.CARD_NUMBER as cardNumber,
+                p.LOT_ID as lotId,
+                p.TICKET_ID as ticketId,
+                p.STATUS as status,
+                p.CREATED_AT as createdAt,
+                u.NAME as userName,
+                u.ID as userId
+            FROM Payments p
+            JOIN Users u ON p.USER_ID = u.ID
+            WHERE 1=1
+        `;
+        
+        const params = {};
+        
+        // 如果提供了开始日期，添加过滤条件
+        if (startDate) {
+            query += ` AND p.CREATED_AT >= TO_TIMESTAMP(:startDate, 'YYYY-MM-DD')`;
+            params.startDate = startDate;
+        }
+        
+        // 如果提供了结束日期，添加过滤条件
+        if (endDate) {
+            query += ` AND p.CREATED_AT <= TO_TIMESTAMP(:endDate, 'YYYY-MM-DD') + INTERVAL '1' DAY - INTERVAL '1' SECOND`;
+            params.endDate = endDate;
+        }
+        
+        query += ` ORDER BY p.CREATED_AT DESC`;
+        
+        console.log("执行查询:", query);
+        console.log("参数:", params);
+        
+        const result = await connection.execute(
+            query,
+            params,
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        
+        console.log(`Found ${result.rows.length} payment records`);
+        
+        // 处理数据，掩盖信用卡号码中间位数
+        const payments = result.rows.map(row => {
+            // 如果有信用卡号码，只显示最后4位
+            if (row.CARDNUMBER) {
+                const length = row.CARDNUMBER.length;
+                if (length > 4) {
+                    row.CARDNUMBER = '****' + row.CARDNUMBER.substring(length - 4);
+                }
+            }
+            
+            return {
+                payId: row.PAYID,
+                amount: row.AMOUNT,
+                paymentMethod: row.PAYMENTMETHOD,
+                cardNumber: row.CARDNUMBER,
+                lotId: row.LOTID,
+                ticketId: row.TICKETID,
+                status: row.STATUS,
+                createdAt: row.CREATEDAT,
+                userName: row.USERNAME,
+                userId: row.USERID
+            };
+        });
+        
+        return {
+            success: true,
+            payments: payments
+        };
+    } catch (error) {
+        console.error('Error getting payments:', error);
+        return {
+            success: false,
+            message: 'Database error while getting payments: ' + error.message
+        };
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+                console.log('Database connection closed successfully in getAllPayments');
+            } catch (err) {
+                console.error('Error closing database connection in getAllPayments:', err);
             }
         }
     }
@@ -1250,6 +1398,187 @@ async function updateViolationStatus(ticketId, newStatus) {
     }
 }
 
+// 通过车牌号和区域查找违规记录
+async function findViolationsByPlate(licensePlate, province) {
+    let connection;
+    try {
+        connection = await oracledb.getConnection(dbConfig);
+        
+        const query = `
+            SELECT 
+                v.TICKET_ID as TICKETID,
+                v.REASON,
+                v.TIME,
+                v.LOT_ID as LOTID,
+                v.PROVINCE,
+                v.LICENSE_PLATE as LICENSEPLATE,
+                v.STATUS
+            FROM Violations v
+            WHERE v.LICENSE_PLATE = :licensePlate 
+            AND v.PROVINCE = :province
+            ORDER BY v.TIME DESC
+        `;
+        
+        const result = await connection.execute(
+            query,
+            {
+                licensePlate: licensePlate,
+                province: province
+            },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        
+        // 格式化响应
+        return {
+            success: true,
+            violations: result.rows
+        };
+    } catch (error) {
+        console.error('Error finding violations by plate:', error);
+        return {
+            success: false,
+            message: 'Database error while finding violations: ' + error.message
+        };
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+                console.log('Database connection closed successfully in findViolationsByPlate');
+            } catch (err) {
+                console.error('Error closing database connection in findViolationsByPlate:', err);
+            }
+        }
+    }
+}
+
+// 根据ID查找单个违规记录
+async function getViolationById(ticketId) {
+    let connection;
+    try {
+        connection = await oracledb.getConnection(dbConfig);
+        
+        const query = `
+            SELECT 
+                v.TICKET_ID as TICKETID,
+                v.REASON,
+                v.TIME,
+                v.LOT_ID as LOTID,
+                v.PROVINCE,
+                v.LICENSE_PLATE as LICENSEPLATE,
+                v.STATUS
+            FROM Violations v
+            WHERE v.TICKET_ID = :ticketId
+        `;
+
+        const result = await connection.execute(
+            query,
+            {
+                ticketId: parseInt(ticketId, 10)
+            },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        if (result.rows.length === 0) {
+            return {
+                success: false,
+                message: `No violation found with ID ${ticketId}`
+            };
+        }
+
+        // 格式化响应
+        return {
+            success: true,
+            violation: result.rows[0]
+        };
+    } catch (error) {
+        console.error('Error finding violation by ID:', error);
+        return {
+            success: false,
+            message: 'Database error while finding violation: ' + error.message
+        };
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+                console.log('Database connection closed successfully in getViolationById');
+            } catch (err) {
+                console.error('Error closing database connection in getViolationById:', err);
+            }
+        }
+    }
+}
+
+// 查询指定停车场的活跃车辆（有效期内的车辆）
+async function getActiveVehiclesByLotId(lotId) {
+    const query = `
+        SELECT 
+            v.VEHICLE_ID,
+            v.PROVINCE,
+            v.LICENSE_PLATE,
+            v.PARKING_UNTIL,
+            v.CURRENT_LOT_ID,
+            u.ID as USER_ID,
+            u.NAME as USER_NAME,
+            u.UNIT_NUMBER,
+            u.USER_TYPE
+        FROM 
+            Vehicles v
+        JOIN
+            Users u ON v.USER_ID = u.ID
+        WHERE 
+            v.CURRENT_LOT_ID = :lotId 
+            AND v.PARKING_UNTIL > SYSTIMESTAMP
+        ORDER BY 
+            v.PARKING_UNTIL ASC
+    `;
+    
+    return await withOracleDB(async (connection) => {
+        try {
+            console.log(`Fetching active vehicles for lot ID: ${lotId}`);
+            const result = await connection.execute(
+                query, 
+                { lotId: parseInt(lotId, 10) },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            if (result.rows.length === 0) {
+                console.log(`No active vehicles found for lot ID: ${lotId}`);
+                return {
+                    success: true,
+                    message: 'No active vehicles found',
+                    vehicles: []
+                };
+            }
+            
+            const vehicles = result.rows.map(row => ({
+                vehicleId: row.VEHICLE_ID,
+                province: row.PROVINCE,
+                licensePlate: row.LICENSE_PLATE,
+                parkingUntil: row.PARKING_UNTIL,
+                lotId: row.CURRENT_LOT_ID,
+                userId: row.USER_ID,
+                userName: row.USER_NAME,
+                unitNumber: row.UNIT_NUMBER,
+                userType: row.USER_TYPE
+            }));
+            
+            console.log(`Found ${vehicles.length} active vehicles for lot ID: ${lotId}`);
+            
+            return {
+                success: true,
+                vehicles: vehicles
+            };
+        } catch (error) {
+            console.error(`Error fetching active vehicles for lot ID ${lotId}:`, error);
+            return {
+                success: false,
+                message: `Database error: ${error.message || 'Unknown error'}`,
+                errorDetails: error.toString()
+            };
+        }
+    });
+}
+
 module.exports = {
     testOracleConnection,
     loginUser,
@@ -1272,5 +1601,9 @@ module.exports = {
     registerVisitor,
     verifyVehicle,
     getAllViolations,
-    updateViolationStatus
+    updateViolationStatus,
+    findViolationsByPlate,
+    getViolationById,
+    getActiveVehiclesByLotId,
+    getAllPayments
 };

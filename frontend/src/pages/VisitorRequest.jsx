@@ -102,32 +102,47 @@ const VisitorRequest = () => {
         const fetchParkingLots = async () => {
             try {
                 setIsLoading(true);
-                const apiUrl = API_ENDPOINTS.getAllParkingLots; // 使用API_ENDPOINTS
- 
                 
+                // 首先获取停车场名称列表
+                const namesResponse = await fetch(API_ENDPOINTS.getAllParkingLotNames);
+                if (namesResponse.ok) {
+                    const namesData = await namesResponse.json();
+                    
+                    if (namesData.success && namesData.parkingLots) {
+                        // 注意：后端返回的键名是大写的
+                        const formattedLots = namesData.parkingLots.map(lot => ({
+                            id: lot.LOTID.toString(),
+                            name: lot.LOTNAME || `Parking Lot ${lot.LOTID}`
+                        }));
+                        
+                        console.log('Fetched parking lot names:', formattedLots);
+                        setParkingLots(formattedLots);
+                        setIsLoading(false);
+                        return;
+                    }
+                }
+                
+                // 如果获取名称失败，回退到获取基本停车场信息
+                const apiUrl = API_ENDPOINTS.getAllParkingLots;
                 const response = await fetch(apiUrl);
-
                 
                 if (!response.ok) {
                     throw new Error(`Failed to fetch parking lots: ${response.status}`);
                 }
                 
                 const text = await response.text();
-
                 
                 if (!text) {
                     throw new Error('Empty response received');
                 }
                 
                 const data = JSON.parse(text);
-
-        
                 
                 if (data.success && data.parkingLots) {
                     // 转换数据格式
                     setParkingLots(data.parkingLots.map(lot => ({
                         id: lot.lotId.toString(),
-                        name: lot.lotName
+                        name: `Parking Lot ${lot.lotId}`
                     })));
                 } else {
                     throw new Error(data.message || 'Failed to fetch parking lots');

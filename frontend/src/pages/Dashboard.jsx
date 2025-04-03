@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Car, Users, AlertTriangle, Ticket, ArrowUpRight, ArrowDownRight, MapPin, Search, FileText } from 'lucide-react';
+import { Car, Users, AlertTriangle, Ticket, ArrowUpRight, ArrowDownRight, MapPin, Search, FileText, Loader2, Settings, ShieldCheck, BarChart3, Clock } from 'lucide-react';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import OccupancyChart from '@/components/dashboard/OccupancyChart';
 import { Button } from '@/components/ui/button';
@@ -94,6 +94,13 @@ const Dashboard = () => {
     const [recentActivity, setRecentActivity] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [stats, setStats] = useState([]);
+    const [reportType, setReportType] = useState('violations');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+    const [reportData, setReportData] = useState(null);
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [showResidentModal, setShowResidentModal] = useState(false);
 
     const container = {
         hidden: { opacity: 0 },
@@ -116,59 +123,58 @@ const Dashboard = () => {
             try {
                 setIsLoading(true);
                 
-                try {
-                    const response = await fetch(API_ENDPOINTS.getAllParkingLots);
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch parking lots: ${response.status}`);
-                    }
-                    
-                    const text = await response.text();
-                    console.log('Parking lots API response:', text);
-                    
-                    if (!text) {
-                        throw new Error('Empty response received');
-                    }
-                    
-                    const data = JSON.parse(text);
-                    
-                    if (data.success && data.parkingLots) {
-                        // 使用API返回的完整字段
-                        const lotsWithNames = data.parkingLots.map(lot => {
-                            return {
-                                id: lot.lotId.toString(),
-                                name: lot.lotName || `Parking Lot ${lot.lotId}`, // 使用API返回的lotName
-                                address: lot.address || '',
-                                totalSpaces: lot.totalSpaces || 0,
-                                availableSpaces: lot.availableSpaces || 0,
-                                occupiedSpaces: lot.totalSpaces - lot.availableSpaces || 0,
-                                capacity: lot.totalSpaces,
-                                currentRemain: lot.availableSpaces,
-                                currentOccupancy: lot.totalSpaces - lot.availableSpaces,
-                                vehicles: lot.vehicles || []
-                            };
-                        });
-                        
-                        console.log('Formatted parking lots:', lotsWithNames);
-                        setParkingLots(lotsWithNames);
-                        
-                        // 如果有停车场，设置第一个为默认选择
-                        if (lotsWithNames.length > 0) {
-                            setSelectedParkingLot(lotsWithNames[0].id);
-                            setActiveParkingLot(lotsWithNames[0]);
-                            await fetchParkingLotDetails(lotsWithNames[0].id);
-                        }
-                        
-                        return; // 成功获取数据，退出函数
-                    } else {
-                        throw new Error(data.message || 'Failed to fetch parking lots');
-                    }
-                } catch (error) {
-                    console.error("Error fetching parking lots from API:", error);
-                    toast({
-                        title: "Error",
-                        description: "Failed to load parking lots. Please try again later.",
-                        variant: "destructive",
+                // 首先获取停车场名称
+                const namesResponse = await fetch(API_ENDPOINTS.getAllParkingLotNames);
+                if (!namesResponse.ok) {
+                    throw new Error(`Failed to fetch parking lot names: ${namesResponse.status}`);
+                }
+                
+                const namesData = await namesResponse.json();
+                const lotNames = {};
+                
+                if (namesData.success && namesData.parkingLots) {
+                    namesData.parkingLots.forEach(lot => {
+                        // 注意：后端返回的键名是大写的
+                        lotNames[lot.LOTID] = {
+                            name: lot.LOTNAME || `Parking Lot ${lot.LOTID}`,
+                            address: lot.ADDRESS || ''
+                        };
                     });
+                    console.log('Fetched parking lot names:', lotNames);
+                }
+                
+                // 然后获取停车场详细信息
+                const response = await fetch(API_ENDPOINTS.getAllParkingLots);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch parking lots: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.parkingLots) {
+                    // 格式化停车场数据
+                    const lotsWithNames = data.parkingLots.map(lot => {
+                        return {
+                            id: lot.lotId.toString(),
+                            name: lotNames[lot.lotId]?.name || `Parking Lot ${lot.lotId}`,
+                            address: lotNames[lot.lotId]?.address || '',
+                            totalSpaces: lot.capacity || 0,
+                            availableSpaces: lot.currentRemain || 0,
+                            occupiedSpaces: lot.currentOccupancy || 0
+                        };
+                    });
+                    
+                    console.log('Formatted parking lots:', lotsWithNames);
+                    setParkingLots(lotsWithNames);
+                    
+                    // 如果有停车场，设置第一个为默认选择
+                    if (lotsWithNames.length > 0) {
+                        setSelectedParkingLot(lotsWithNames[0].id);
+                        setActiveParkingLot(lotsWithNames[0]);
+                        await fetchParkingLotDetails(lotsWithNames[0].id);
+                    }
+                } else {
+                    throw new Error(data.message || 'Failed to fetch parking lots');
                 }
             } catch (error) {
                 console.error('Error fetching parking lots:', error);
@@ -195,19 +201,13 @@ const Dashboard = () => {
     // 获取停车场详细信息
     const fetchParkingLotDetails = async (lotId) => {
         try {
+            // 获取停车场详细信息
             const response = await fetch(API_ENDPOINTS.getParkingLotById(lotId));
             if (!response.ok) {
                 throw new Error(`Failed to fetch parking lot details: ${response.status}`);
             }
             
-            const text = await response.text();
-            console.log('Parking lot details API response:', text);
-            
-            if (!text) {
-                throw new Error('Empty response received');
-            }
-            
-            const data = JSON.parse(text);
+            const data = await response.json();
             
             if (data.success && data.parkingLots) {
                 const lot = data.parkingLots;
@@ -218,82 +218,118 @@ const Dashboard = () => {
                 // 设置当前停车场信息
                 setActiveParkingLot(currentLot);
                 
-                // 更新统计信息，使用API返回的字段
-                setStats([
-                    {
-                        title: 'Total Spaces',
-                        value: (lot.totalSpaces || 0).toString(),
-                        change: '+0',
-                        isIncrease: true,
-                        icon: 'car',
-                        progress: Math.round((lot.totalSpaces - lot.availableSpaces) / (lot.totalSpaces || 1) * 100)
-                    },
-                    {
-                        title: 'Available Spaces',
-                        value: (lot.availableSpaces || 0).toString(),
-                        change: '0',
-                        isIncrease: true,
-                        icon: 'map-pin',
-                        progress: Math.round((lot.availableSpaces || 0) / (lot.totalSpaces || 1) * 100)
-                    },
-                    {
-                        title: 'Active Visitor Passes',
-                        value: (lot.vehicles ? lot.vehicles.length : 0).toString(),
-                        change: '0',
-                        isIncrease: true,
-                        icon: 'ticket',
-                        progress: Math.round((lot.vehicles ? lot.vehicles.length : 0) / (lot.totalSpaces || 1) * 100)
-                    },
-                    {
-                        title: 'Open Violations',
-                        value: '0', // 这里需要另外的API来获取违规数量
-                        change: '0',
-                        isIncrease: false,
-                        icon: 'alert-triangle',
-                        progress: 0
-                    },
-                ]);
-                
-                // 转换车辆信息为表格格式
-                if (lot.vehicles && lot.vehicles.length > 0) {
-                    // 这里需要另外API来获取更多车辆信息，包括访客名称、单元号等
-                    // 暂时使用模拟数据格式
-                    const formattedVehicles = lot.vehicles.map((vehicle, index) => {
-                        // 从停车时间计算剩余时间
-                        const parkingUntil = new Date(vehicle.parkingUntil);
-                        const now = new Date();
-                        const diff = parkingUntil - now;
-                        
-                        let remaining = '';
-                        if (diff > 0) {
-                            const hours = Math.floor(diff / (1000 * 60 * 60));
-                            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                            if (hours >= 24) {
-                                const days = Math.floor(hours / 24);
-                                remaining = `${days}d ${hours % 24}h`;
-                            } else {
-                                remaining = `${hours}h ${minutes}m`;
-                            }
-                        } else {
-                            remaining = 'Expired';
+                // 1. 获取该停车场未处理的违规记录数量
+                let openViolationsCount = 0;
+                try {
+                    const violationsResponse = await fetch(API_ENDPOINTS.getViolationsByLot(lotId));
+                    if (violationsResponse.ok) {
+                        const violationsData = await violationsResponse.json();
+                        if (violationsData.success) {
+                            // 计算未处理（状态为pending）的违规记录数量
+                            openViolationsCount = violationsData.violations.filter(v => v.status === 'pending').length;
+                            console.log(`Found ${openViolationsCount} open violations for lot ${lotId}`);
                         }
+                    }
+                } catch (violationsError) {
+                    console.error('Error fetching violations:', violationsError);
+                }
+                
+                // 2. 获取该停车场的活跃车辆
+                try {
+                    const activeVehiclesResponse = await fetch(API_ENDPOINTS.getActiveVehiclesByLotId(lotId));
+                    if (activeVehiclesResponse.ok) {
+                        const activeVehiclesData = await activeVehiclesResponse.json();
                         
-                        return {
-                            licensePlate: vehicle.licensePlate,
-                            province: vehicle.province,
-                            unitNumber: '---', // 需要额外API获取
-                            visitorName: '---', // 需要额外API获取
-                            passType: diff > 24 * 60 * 60 * 1000 ? 'Weekend' : '24 hour',
-                            remaining: remaining
-                        };
-                    });
-                    
-                    setCurrentVehicles(formattedVehicles);
-                } else {
+                        if (activeVehiclesData.success && activeVehiclesData.vehicles) {
+                            // 处理车辆信息
+                            const formattedVehicles = activeVehiclesData.vehicles.map((vehicle) => {
+                                // 从停车时间计算剩余时间
+                                const parkingUntil = new Date(vehicle.parkingUntil);
+                                const now = new Date();
+                                const diff = parkingUntil - now;
+                                
+                                let remaining = '';
+                                if (diff > 0) {
+                                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                                    if (hours >= 24) {
+                                        const days = Math.floor(hours / 24);
+                                        remaining = `${days}d ${hours % 24}h`;
+                                    } else {
+                                        remaining = `${hours}h ${minutes}m`;
+                                    }
+                                } else {
+                                    remaining = 'Expired';
+                                }
+                                
+                                return {
+                                    licensePlate: vehicle.licensePlate,
+                                    province: vehicle.province,
+                                    unitNumber: vehicle.unitNumber || '---',
+                                    visitorName: vehicle.userName || '---',
+                                    passType: vehicle.userType === 'visitor' ? 'Visitor' : 'Resident',
+                                    remaining: remaining
+                                };
+                            });
+                            
+                            setCurrentVehicles(formattedVehicles);
+                            console.log('Active vehicles set:', formattedVehicles.length);
+                        } else {
+                            setCurrentVehicles([]);
+                            console.log('No active vehicles found or API error');
+                        }
+                    } else {
+                        console.error('Error fetching active vehicles:', activeVehiclesResponse.status);
+                        setCurrentVehicles([]);
+                    }
+                } catch (vehiclesError) {
+                    console.error('Error fetching active vehicles:', vehiclesError);
                     setCurrentVehicles([]);
                 }
                 
-                // 获取最近活动
+                // 3. 计算各项统计信息
+                const totalSpaces = lot.capacity || 0;
+                const availableSpaces = lot.currentRemain || 0;
+                const occupiedSpaces = totalSpaces - availableSpaces;
+                const activeVisitorPasses = currentVehicles.length; // 使用新获取的车辆数量
+                
+                // 4. 更新统计信息
+                setStats([
+                    {
+                        title: 'Total Spaces',
+                        value: totalSpaces.toString(),
+                        change: '+0',
+                        isIncrease: true,
+                        icon: 'car',
+                        progress: Math.round((occupiedSpaces) / (totalSpaces || 1) * 100)
+                    },
+                    {
+                        title: 'Available Spaces',
+                        value: availableSpaces.toString(),
+                        change: '0',
+                        isIncrease: true,
+                        icon: 'map-pin',
+                        progress: Math.round((availableSpaces) / (totalSpaces || 1) * 100)
+                    },
+                    {
+                        title: 'Active Visitor Passes',
+                        value: activeVisitorPasses.toString(),
+                        change: '0',
+                        isIncrease: true,
+                        icon: 'ticket',
+                        progress: Math.round((activeVisitorPasses) / (totalSpaces || 1) * 100)
+                    },
+                    {
+                        title: 'Open Violations',
+                        value: openViolationsCount.toString(),
+                        change: '0',
+                        isIncrease: false,
+                        icon: 'alert-triangle',
+                        progress: Math.round((openViolationsCount) / Math.max(10, openViolationsCount) * 100)
+                    },
+                ]);
+                
+                // 5. 获取最近活动
                 await fetchRecentActivity(lotId);
             }
         } catch (error) {
@@ -518,6 +554,142 @@ const Dashboard = () => {
         }
     };
 
+    const generateReport = async () => {
+        if (!reportType || !startDate || !endDate) {
+            toast({
+                title: "Missing Information",
+                description: "Please select report type and date range",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        try {
+            setIsGeneratingReport(true);
+            
+            // 根据报告类型获取不同的数据
+            let data = [];
+            
+            if (reportType === 'violations') {
+                // 使用新的API端点获取指定时间范围内的违规记录
+                const apiUrl = API_ENDPOINTS.getViolationsByDate(startDate, endDate, selectedParkingLot);
+                console.log(`Fetching violation records, API URL: ${apiUrl}`);
+                
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch violation records: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                if (result.success) {
+                    data = result.violations || [];
+                    console.log(`Retrieved ${data.length} violation records`);
+                } else {
+                    throw new Error(result.message || 'Failed to get violation records');
+                }
+            } else if (reportType === 'payments') {
+                // 使用新的API端点获取指定时间范围内的支付记录
+                const apiUrl = API_ENDPOINTS.getPaymentsByDate(startDate, endDate);
+                console.log(`Fetching payment records, API URL: ${apiUrl}`);
+                
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch payment records: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                if (result.success) {
+                    data = result.payments || [];
+                    console.log(`Retrieved ${data.length} payment records`);
+                } else {
+                    throw new Error(result.message || 'Failed to get payment records');
+                }
+            }
+            
+            // 保存报告数据
+            setReportData({
+                type: reportType,
+                startDate,
+                endDate,
+                data,
+                generatedAt: new Date().toISOString()
+            });
+            
+            // 显示报告模态框
+            setShowReportModal(true);
+            
+            toast({
+                title: "Report Generated",
+                description: `${reportType === 'violations' ? 'Violation' : 'Payment'} report generated successfully`,
+            });
+        } catch (error) {
+            console.error("Error generating report:", error);
+            toast({
+                title: "Error",
+                description: `Failed to generate report: ${error.message}`,
+                variant: "destructive",
+            });
+        } finally {
+            setIsGeneratingReport(false);
+        }
+    };
+
+    // 导出报告为CSV
+    const exportReportToCSV = () => {
+        if (!reportData || !reportData.data || reportData.data.length === 0) {
+            toast({
+                title: "No data",
+                description: "There is no data to export",
+                variant: "destructive",
+            });
+            return;
+        }
+        
+        try {
+            // 将对象数组转换为CSV格式
+            const headers = Object.keys(reportData.data[0]).join(',');
+            const rows = reportData.data.map(item => 
+                Object.values(item).map(value => 
+                    // 处理可能包含逗号的值，用引号包裹
+                    typeof value === 'string' && value.includes(',') 
+                        ? `"${value}"` 
+                        : value
+                ).join(',')
+            ).join('\n');
+            
+            const csvContent = `${headers}\n${rows}`;
+            
+            // 创建Blob对象
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            // 创建一个临时的a标签并触发下载
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${reportData.type}_report_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            
+            // 清理
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            toast({
+                title: "Report Exported",
+                description: "Report has been exported as CSV successfully",
+            });
+        } catch (error) {
+            console.error("Error exporting report:", error);
+            toast({
+                title: "Export Failed",
+                description: `Failed to export report: ${error.message}`,
+                variant: "destructive",
+            });
+        }
+    };
+
     const renderLicensePlateVerification = () => (
         <Card className="mb-8">
             <CardHeader>
@@ -628,144 +800,226 @@ const Dashboard = () => {
         </Card>
     );
 
+    const renderActiveVehiclesSection = () => (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center">
+                    <Car className="mr-2 h-5 w-5" />
+                    Active Visitor Vehicles
+                </CardTitle>
+                <CardDescription>Current vehicles using visitor passes</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {currentVehicles.length > 0 ? (
+                    <div className="overflow-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b">
+                                    <th className="pb-2 text-left font-medium text-sm">License</th>
+                                    <th className="pb-2 text-left font-medium text-sm">Region</th>
+                                    <th className="pb-2 text-left font-medium text-sm">Visitor</th>
+                                    <th className="pb-2 text-left font-medium text-sm">Unit</th>
+                                    <th className="pb-2 text-left font-medium text-sm">Pass Type</th>
+                                    <th className="pb-2 text-left font-medium text-sm">Remaining</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentVehicles.map((vehicle, idx) => (
+                                    <tr key={idx} className="border-b last:border-0">
+                                        <td className="py-3 text-sm">{vehicle.licensePlate}</td>
+                                        <td className="py-3 text-sm">{vehicle.province}</td>
+                                        <td className="py-3 text-sm">{vehicle.visitorName}</td>
+                                        <td className="py-3 text-sm">{vehicle.unitNumber || 'N/A'}</td>
+                                        <td className="py-3 text-sm">
+                                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                vehicle.passType === 'Visitor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                                            }`}>
+                                                {vehicle.passType}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 text-sm">
+                                            <span className={`${
+                                                vehicle.remaining === 'Expired' ? 'text-red-500' : ''
+                                            }`}>
+                                                {vehicle.remaining}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-gray-500">
+                        No active visitor vehicles in this parking lot
+                    </div>
+                )}
+                <Button variant="ghost" size="sm" className="w-full text-primary justify-center mt-4">
+                    View All Vehicles
+                </Button>
+            </CardContent>
+        </Card>
+    );
+
     const renderManagementFunctions = () => (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center">
                         <FileText className="mr-2 h-5 w-5" />
                         Generate Report
                     </CardTitle>
-                    <CardDescription>Create parking usage and violation reports</CardDescription>
+                    <CardDescription>Generate parking facility data reports</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
                         <div>
                             <Label>Report Type</Label>
-                            <Select defaultValue="occupancy">
-                                <SelectTrigger className="mt-1">
-                                    <SelectValue />
+                            <Select
+                                value={reportType}
+                                onValueChange={setReportType}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select report type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="occupancy">Parking Occupancy</SelectItem>
-                                    <SelectItem value="violations">Parking Violations</SelectItem>
-                                    <SelectItem value="visitors">Visitor Passes</SelectItem>
-                                    <SelectItem value="revenue">Revenue Report</SelectItem>
+                                    <SelectItem value="violations">Violation Records Report</SelectItem>
+                                    <SelectItem value="payments">Payment Records Report</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-
+                        
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Label>Start Date</Label>
-                                <Input type="date" className="mt-1" />
+                                <Input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                />
                             </div>
                             <div>
                                 <Label>End Date</Label>
-                                <Input type="date" className="mt-1" />
+                                <Input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                />
                             </div>
                         </div>
-
-                        <Button className="w-full">
-                            Generate Report
+                        
+                        <Button 
+                            className="w-full" 
+                            onClick={generateReport}
+                            disabled={isGeneratingReport}
+                        >
+                            {isGeneratingReport ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Generating...
+                                </>
+                            ) : (
+                                "Generate Report"
+                            )}
                         </Button>
                     </div>
                 </CardContent>
             </Card>
-
-            <Dialog>
-                <DialogTrigger asChild>
-                    <Card className="cursor-pointer hover:border-primary/50 transition-colors">
-                        <CardHeader>
-                            <CardTitle className="flex items-center">
-                                <Ticket className="mr-2 h-5 w-5" />
-                                Manage Passes
-                            </CardTitle>
-                            <CardDescription>Adjust resident pass allocations</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                <p className="text-sm text-gray-500">
-                                    Set the number of visitor passes that residents receive each month.
-                                    You can update passes for all residents or adjust for individual units.
-                                </p>
-                                <Button className="w-full">Open Pass Management</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Manage Resident Passes</DialogTitle>
-                        <DialogDescription>
-                            Adjust monthly visitor pass allocation for residents
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Tabs defaultValue="bulk" className="w-full">
-                        <TabsList className="grid grid-cols-2 mb-4">
-                            <TabsTrigger value="bulk">Bulk Update</TabsTrigger>
-                            <TabsTrigger value="individual">Individual Update</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="bulk">
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label>Pass Type</Label>
-                                        <Select defaultValue="8hour">
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="8hour">8-Hour Passes</SelectItem>
-                                                <SelectItem value="24hour">24-Hour Passes</SelectItem>
-                                                <SelectItem value="weekend">Weekend Passes</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <Label>Number of Passes</Label>
-                                        <Input type="number" defaultValue="5" min="0" max="10" />
-                                    </div>
-                                </div>
-                                <Button className="w-full">Update All Residents</Button>
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="individual">
-                            <div className="space-y-4">
-                                <div>
-                                    <Label>Unit Number</Label>
-                                    <Input placeholder="Enter unit number" />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label>Pass Type</Label>
-                                        <Select defaultValue="8hour">
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="8hour">8-Hour Passes</SelectItem>
-                                                <SelectItem value="24hour">24-Hour Passes</SelectItem>
-                                                <SelectItem value="weekend">Weekend Passes</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <Label>Number of Passes</Label>
-                                        <Input type="number" defaultValue="5" min="0" max="10" />
-                                    </div>
-                                </div>
-                                <Button className="w-full">Update Resident</Button>
-                            </div>
-                        </TabsContent>
-                    </Tabs>
-                </DialogContent>
-            </Dialog>
+            
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center">
+                        <Settings className="mr-2 h-5 w-5" />
+                        Management Settings
+                    </CardTitle>
+                    <CardDescription>Manage parking facilities and security settings</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <Button variant="outline" className="w-full justify-start" onClick={() => setShowResidentModal(true)}>
+                            <Users className="mr-2 h-4 w-4" />
+                            Manage Residents
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start">
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            Security Settings
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start">
+                            <BarChart3 className="mr-2 h-4 w-4" />
+                            Set Parking Capacity
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start">
+                            <Clock className="mr-2 h-4 w-4" />
+                            Visitor Pass Quotas
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
+
+    // 报告预览模态框组件
+    const ReportModal = () => {
+        if (!reportData) return null;
+        
+        return (
+            <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
+                <DialogContent className="max-w-5xl max-h-[80vh] overflow-auto">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {reportType === 'violations' ? 'Violation Records Report' : 'Payment Records Report'} 
+                        </DialogTitle>
+                        <DialogDescription>
+                            Report generated on: {new Date(reportData.generatedAt).toLocaleString()} 
+                            Date range: {new Date(reportData.startDate).toLocaleDateString()} to {new Date(reportData.endDate).toLocaleDateString()}
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="mt-4">
+                        {reportData.data.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b">
+                                            {Object.keys(reportData.data[0]).map((key) => (
+                                                <th key={key} className="pb-2 text-left font-medium text-sm">
+                                                    {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {reportData.data.map((item, idx) => (
+                                            <tr key={idx} className="border-b last:border-0">
+                                                {Object.values(item).map((value, valueIdx) => (
+                                                    <td key={valueIdx} className="py-3 text-sm">
+                                                        {typeof value === 'object' && value !== null 
+                                                            ? JSON.stringify(value) 
+                                                            : String(value)}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-gray-500">
+                                No data available for the selected date range
+                            </div>
+                        )}
+                    </div>
+                    
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowReportModal(false)}>Close</Button>
+                        <Button onClick={exportReportToCSV} disabled={!reportData.data.length}>
+                            Export CSV
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        );
+    };
 
     return (
         <div className="container mx-auto px-4 pt-20 pb-16">
@@ -887,53 +1141,88 @@ const Dashboard = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.4 }}
                     >
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center">
-                                    <Car className="mr-2 h-5 w-5" />
-                                    Active Visitor Vehicles
-                                </CardTitle>
-                                <CardDescription>Current vehicles using visitor passes</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {currentVehicles.length > 0 ? (
-                                    <div className="overflow-auto">
-                                        <table className="w-full">
-                                            <thead>
-                                            <tr className="border-b">
-                                                <th className="pb-2 text-left font-medium text-sm">License</th>
-                                                <th className="pb-2 text-left font-medium text-sm">Region</th>
-                                                <th className="pb-2 text-left font-medium text-sm">Unit</th>
-                                                <th className="pb-2 text-left font-medium text-sm">Pass Type</th>
-                                                <th className="pb-2 text-left font-medium text-sm">Remaining</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            {currentVehicles.map((vehicle, idx) => (
-                                                <tr key={idx} className="border-b last:border-0">
-                                                    <td className="py-3 text-sm">{vehicle.licensePlate}</td>
-                                                    <td className="py-3 text-sm">{vehicle.province}</td>
-                                                    <td className="py-3 text-sm">{vehicle.unitNumber}</td>
-                                                    <td className="py-3 text-sm">{vehicle.passType}</td>
-                                                    <td className="py-3 text-sm">{vehicle.remaining}</td>
-                                                </tr>
-                                            ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8 text-gray-500">
-                                        No active visitor vehicles in this parking lot
-                                    </div>
-                                )}
-                                <Button variant="ghost" size="sm" className="w-full text-primary justify-center mt-4">
-                                    View All Vehicles
-                                </Button>
-                            </CardContent>
-                        </Card>
+                        {renderActiveVehiclesSection()}
                     </motion.div>
+
+                    {renderManagementFunctions()}
+                    
+                    {/* Render the report modal */}
+                    <ReportModal />
                 </>
             )}
+            
+            {/* Resident Management Modal */}
+            <Dialog open={showResidentModal} onOpenChange={setShowResidentModal}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Manage Residents</DialogTitle>
+                        <DialogDescription>
+                            Adjust visitor pass quotas for residents
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Tabs defaultValue="bulk" className="w-full">
+                        <TabsList className="grid grid-cols-2 mb-4">
+                            <TabsTrigger value="bulk">Bulk Update</TabsTrigger>
+                            <TabsTrigger value="individual">Individual Update</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="bulk">
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label>Pass Type</Label>
+                                        <Select defaultValue="8hour">
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="8hour">8-Hour Pass</SelectItem>
+                                                <SelectItem value="24hour">24-Hour Pass</SelectItem>
+                                                <SelectItem value="weekend">Weekend Pass</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label>Number of Passes</Label>
+                                        <Input type="number" defaultValue="5" min="0" max="10" />
+                                    </div>
+                                </div>
+                                <Button className="w-full">Update All Residents</Button>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="individual">
+                            <div className="space-y-4">
+                                <div>
+                                    <Label>Unit Number</Label>
+                                    <Input placeholder="Enter unit number" />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label>Pass Type</Label>
+                                        <Select defaultValue="8hour">
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="8hour">8-Hour Pass</SelectItem>
+                                                <SelectItem value="24hour">24-Hour Pass</SelectItem>
+                                                <SelectItem value="weekend">Weekend Pass</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label>Number of Passes</Label>
+                                        <Input type="number" defaultValue="5" min="0" max="10" />
+                                    </div>
+                                </div>
+                                <Button className="w-full">Update Resident</Button>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
