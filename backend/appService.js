@@ -1753,6 +1753,58 @@ async function getActiveVehiclesByLotId(lotId) {
     });
 }
 
+
+async function getAllVehiclesWithProjection(selectedAttributes) {
+    return await withOracleDB(async (connection) => {
+        try {
+            const validAttributes = {
+                vehicleId: 'v.VEHICLE_ID',
+                province: 'v.PROVINCE',
+                licensePlate: 'v.LICENSE_PLATE',
+                parkingUntil: 'v.PARKING_UNTIL',
+                currentLotId: 'v.CURRENT_LOT_ID',
+                userId: 'v.USER_ID',
+                userName: 'u.NAME',
+                unitNumber: 'u.UNIT_NUMBER'
+            };
+
+            // 过滤非法字段
+            const selectedCols = selectedAttributes
+                .filter(attr => validAttributes[attr])
+                .map(attr => `${validAttributes[attr]} AS ${attr}`);
+
+            if (selectedCols.length === 0) {
+                return { success: false, message: 'No valid attributes selected' };
+            }
+
+            const query = `
+                SELECT ${selectedCols.join(', ')}
+                FROM Vehicles v
+                JOIN Users u ON v.USER_ID = u.ID
+                ORDER BY v.VEHICLE_ID
+            `;
+
+            const result = await connection.execute(
+                query,
+                {},
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+
+            return {
+                success: true,
+                vehicles: result.rows
+            };
+        } catch (error) {
+            console.error('Error in getAllVehiclesWithProjection:', error);
+            return {
+                success: false,
+                message: error.message || 'Failed to fetch projected vehicles'
+            };
+        }
+    });
+}
+
+
 // Get all vehicles
 async function getAllVehicles() {
     return await withOracleDB(async (connection) => {
