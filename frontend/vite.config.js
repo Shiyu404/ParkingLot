@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => ({
           });
           proxy.on('proxyReq', (proxyReq, req) => {
             console.log('【代理调试】发送请求到目标:', req.method, req.url);
+            console.log('【代理调试】完整目标URL:', proxyReq.path);
             console.log('【代理调试】请求头:', proxyReq.getHeaders());
             if (req.body) {
               const bodyData = JSON.stringify(req.body);

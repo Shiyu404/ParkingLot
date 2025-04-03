@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import { CreditCard, Car, Receipt, Calendar, AlertCircle } from 'lucide-react';
+import { CreditCard, Car, Receipt, Calendar, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { API_ENDPOINTS } from '@/config';
 
 // North American regions
 const northAmericanRegions = [
@@ -45,10 +45,14 @@ const PayTicket = () => {
         cvv: '',
     });
 
-    // Mock ticket data
+    // Loading and error states
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Found ticket data
     const [foundTicket, setFoundTicket] = useState(null);
 
-    const handleFindByCitation = () => {
+    const handleFindByCitation = async () => {
         if (!citationNumber) {
             toast({
                 title: "Missing information",
@@ -58,19 +62,68 @@ const PayTicket = () => {
             return;
         }
 
-        // In a real app, this would query your backend
-        // Mock finding a ticket for demo purposes
-        setFoundTicket({
-            id: citationNumber,
-            amount: 75.00,
-            date: 'October 15, 2023',
-            location: 'North Tower Parking',
-            violation: 'No Valid Visitor Pass',
-            licensePlate: 'XYZ789',
-        });
+        setLoading(true);
+        setError(null);
+
+        try {
+            console.log('Fetching citation:', citationNumber);
+            // 尝试两种URL格式
+            let response;
+            try {
+                // 首先尝试使用config.js中定义的API端点
+                response = await fetch(API_ENDPOINTS.getViolationById(citationNumber));
+                
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+            } catch (err) {
+                console.log('First API attempt failed, trying direct URL...');
+                // 如果失败，直接尝试不带/api前缀的URL
+                response = await fetch(`/violations/${citationNumber}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.violation) {
+                // Format the violation data for display
+                const violation = data.violation;
+                setFoundTicket({
+                    id: violation.ticketId,
+                    amount: 50.00, // You may need to set this based on violation type
+                    date: new Date(violation.time).toLocaleDateString(),
+                    location: `Parking Lot #${violation.lotId}`,
+                    violation: violation.reason,
+                    licensePlate: `${violation.province}-${violation.licensePlate}`,
+                    province: violation.province,
+                    status: violation.status,
+                    lotId: violation.lotId
+                });
+            } else {
+                toast({
+                    title: "No ticket found",
+                    description: "We couldn't find a ticket with that citation number",
+                    variant: "destructive",
+                });
+                setFoundTicket(null);
+            }
+        } catch (err) {
+            console.error('Error finding ticket:', err);
+            setError(err.message);
+            toast({
+                title: "Error",
+                description: "Failed to search for the ticket. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleFindByPlate = () => {
+    const handleFindByPlate = async () => {
         if (!licensePlate || !regionCode) {
             toast({
                 title: "Missing information",
@@ -80,23 +133,82 @@ const PayTicket = () => {
             return;
         }
 
-        // In a real app, this would query your backend
-        // Mock finding a ticket for demo purposes
-        setFoundTicket({
-            id: Math.random().toString(36).substring(2, 10).toUpperCase(),
-            amount: 50.00,
-            date: 'October 18, 2023',
-            location: 'East Tower Parking',
-            violation: 'Parking in Reserved Space',
-            licensePlate: `${regionCode}-${licensePlate}`,
-        });
+        setLoading(true);
+        setError(null);
+
+        try {
+            console.log('Searching plate:', licensePlate, 'region:', regionCode);
+            // 尝试两种URL格式
+            let response;
+            try {
+                // 首先尝试使用config.js中定义的API端点
+                response = await fetch(API_ENDPOINTS.findViolationsByPlate(licensePlate, regionCode));
+                
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+            } catch (err) {
+                console.log('First API attempt failed, trying direct URL...');
+                // 如果失败，直接尝试不带/api前缀的URL
+                response = await fetch(`/violations/search?plate=${encodeURIComponent(licensePlate)}&region=${encodeURIComponent(regionCode)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.violations && data.violations.length > 0) {
+                // Get the first unpaid violation
+                const pendingViolation = data.violations.find(v => v.status === 'pending') || data.violations[0];
+                
+                setFoundTicket({
+                    id: pendingViolation.ticketId,
+                    amount: 50.00, // You may need to set this based on violation type
+                    date: new Date(pendingViolation.time).toLocaleDateString(),
+                    location: `Parking Lot #${pendingViolation.lotId}`,
+                    violation: pendingViolation.reason,
+                    licensePlate: `${pendingViolation.province}-${pendingViolation.licensePlate}`,
+                    province: pendingViolation.province,
+                    status: pendingViolation.status,
+                    lotId: pendingViolation.lotId
+                });
+            } else {
+                toast({
+                    title: "No ticket found",
+                    description: "We couldn't find any pending tickets for this license plate",
+                    variant: "destructive",
+                });
+                setFoundTicket(null);
+            }
+        } catch (err) {
+            console.error('Error finding ticket by plate:', err);
+            setError(err.message);
+            toast({
+                title: "Error",
+                description: "Failed to search for the ticket. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handlePayment = () => {
+    const handlePayment = async () => {
         if (!foundTicket) {
             toast({
-                title: "No ticket found",
+                title: "Missing information",
                 description: "Please search for a ticket first",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (foundTicket.status === 'paid') {
+            toast({
+                title: "Already paid",
+                description: "This ticket has already been paid",
                 variant: "destructive",
             });
             return;
@@ -112,26 +224,117 @@ const PayTicket = () => {
             return;
         }
 
-        // In a real app, this would process payment through your backend
-        console.log('Processing payment:', { ticket: foundTicket, payment: paymentInfo });
+        setLoading(true);
+        setError(null);
 
-        toast({
-            title: "Payment Successful",
-            description: `Paid $${foundTicket.amount.toFixed(2)} for citation #${foundTicket.id}`,
-        });
+        try {
+            // Use a default user ID for guest payments
+            const userId = 1; // You may need to adjust this based on your system
+            
+            // 确保lotId和ticketId是数值类型
+            const lotIdNum = parseInt(foundTicket.lotId, 10);
+            const ticketIdNum = parseInt(foundTicket.id, 10);
+            
+            // 确保amount是数值类型
+            const amountNum = parseFloat(foundTicket.amount);
+            
+            // 打印请求数据用于调试
+            console.log('Payment request data:', {
+                amount: amountNum,
+                paymentMethod: 'Credit Card',
+                cardNumber: paymentInfo.cardNumber,
+                userId: userId,
+                lotId: lotIdNum,
+                ticketId: ticketIdNum
+            });
+            
+            // 尝试直接路径
+            let response; 
+            try {
+                response = await fetch('/payments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        amount: amountNum,
+                        paymentMethod: 'Credit Card',
+                        cardNumber: paymentInfo.cardNumber,
+                        userId: userId,
+                        lotId: lotIdNum,
+                        ticketId: ticketIdNum
+                    }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error('First attempt failed');
+                }
+            } catch (firstError) {
+                console.log('First API attempt failed, trying with /api prefix...');
+                
+                response = await fetch('/api/payments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        amount: amountNum,
+                        paymentMethod: 'Credit Card',
+                        cardNumber: paymentInfo.cardNumber,
+                        userId: userId,
+                        lotId: lotIdNum,
+                        ticketId: ticketIdNum
+                    }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+            }
+            
+            // 处理响应
+            const data = await response.json();
+            
+            if (data.success) {
+                toast({
+                    title: "Payment Successful",
+                    description: `Paid $${foundTicket.amount.toFixed(2)} for citation #${foundTicket.id}`,
+                });
 
-        // Reset form
-        setCitationNumber('');
-        setLicensePlate('');
-        setRegionCode('');
-        setPaymentInfo({
-            cardNumber: '',
-            cardName: '',
-            expiryMonth: '',
-            expiryYear: '',
-            cvv: '',
-        });
-        setFoundTicket(null);
+                // Reset form
+                setCitationNumber('');
+                setLicensePlate('');
+                setRegionCode('');
+                setPaymentInfo({
+                    cardNumber: '',
+                    cardName: '',
+                    expiryMonth: '',
+                    expiryYear: '',
+                    cvv: '',
+                });
+                setFoundTicket(null);
+            } else {
+                throw new Error(data.message || 'Payment failed');
+            }
+        } catch (err) {
+            console.error('Payment error:', err);
+            setError(err.message);
+            toast({
+                title: "Payment Failed",
+                description: err.message || "There was an error processing your payment. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setPaymentInfo(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
     return (
@@ -170,12 +373,19 @@ const PayTicket = () => {
                                                 placeholder="Enter citation number"
                                                 value={citationNumber}
                                                 onChange={(e) => setCitationNumber(e.target.value)}
+                                                disabled={loading}
                                             />
                                             <Button
                                                 className="ml-2"
                                                 onClick={handleFindByCitation}
+                                                disabled={loading}
                                             >
-                                                Search
+                                                {loading ? (
+                                                    <>
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                        Searching...
+                                                    </>
+                                                ) : "Search"}
                                             </Button>
                                         </div>
                                     </div>
@@ -188,6 +398,7 @@ const PayTicket = () => {
                                             <Select
                                                 onValueChange={setRegionCode}
                                                 value={regionCode}
+                                                disabled={loading}
                                             >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select region" />
@@ -208,12 +419,33 @@ const PayTicket = () => {
                                                 placeholder="Enter plate number"
                                                 value={licensePlate}
                                                 onChange={(e) => setLicensePlate(e.target.value)}
+                                                disabled={loading}
                                             />
                                         </div>
                                     </div>
-                                    <Button className="w-full" onClick={handleFindByPlate}>Search</Button>
+                                    <Button 
+                                        className="w-full" 
+                                        onClick={handleFindByPlate}
+                                        disabled={loading}
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Searching...
+                                            </>
+                                        ) : "Search"}
+                                    </Button>
                                 </TabsContent>
                             </Tabs>
+
+                            {error && (
+                                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                                    <div className="flex items-center">
+                                        <AlertCircle className="h-4 w-4 mr-2" />
+                                        {error}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Ticket Information */}
                             {foundTicket && (
@@ -239,6 +471,18 @@ const PayTicket = () => {
                                             <Calendar className="h-4 w-4 text-gray-500 mr-2" />
                                             <span>Location: {foundTicket.location}</span>
                                         </div>
+                                        <div className="flex">
+                                            <Receipt className="h-4 w-4 text-gray-500 mr-2" />
+                                            <span>Status: 
+                                                <span className={`ml-1 ${
+                                                    foundTicket.status === 'paid' 
+                                                    ? 'text-green-600 font-medium'
+                                                    : 'text-yellow-600 font-medium'
+                                                }`}>
+                                                    {foundTicket.status === 'paid' ? 'Paid' : 'Pending Payment'}
+                                                </span>
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -252,34 +496,40 @@ const PayTicket = () => {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                <div className="space-y-2">
+                                <div>
                                     <Label htmlFor="card-number">Card Number</Label>
                                     <Input
                                         id="card-number"
+                                        name="cardNumber"
                                         placeholder="XXXX XXXX XXXX XXXX"
                                         value={paymentInfo.cardNumber}
-                                        onChange={(e) => setPaymentInfo({...paymentInfo, cardNumber: e.target.value})}
+                                        onChange={handleInputChange}
+                                        disabled={loading || !foundTicket || foundTicket?.status === 'paid'}
                                     />
                                 </div>
 
-                                <div className="space-y-2">
+                                <div>
                                     <Label htmlFor="card-name">Cardholder Name</Label>
                                     <Input
                                         id="card-name"
+                                        name="cardName"
                                         placeholder="Name on card"
                                         value={paymentInfo.cardName}
-                                        onChange={(e) => setPaymentInfo({...paymentInfo, cardName: e.target.value})}
+                                        onChange={handleInputChange}
+                                        disabled={loading || !foundTicket || foundTicket?.status === 'paid'}
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="expiry-month">Month</Label>
+                                    <div>
+                                        <Label htmlFor="expire-month">Month</Label>
                                         <Select
-                                            onValueChange={(value) => setPaymentInfo({...paymentInfo, expiryMonth: value})}
+                                            name="expiryMonth"
                                             value={paymentInfo.expiryMonth}
+                                            onValueChange={(value) => setPaymentInfo(prev => ({ ...prev, expiryMonth: value }))}
+                                            disabled={loading || !foundTicket || foundTicket?.status === 'paid'}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger id="expire-month">
                                                 <SelectValue placeholder="MM" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -294,14 +544,15 @@ const PayTicket = () => {
                                             </SelectContent>
                                         </Select>
                                     </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="expiry-year">Year</Label>
+                                    <div>
+                                        <Label htmlFor="expire-year">Year</Label>
                                         <Select
-                                            onValueChange={(value) => setPaymentInfo({...paymentInfo, expiryYear: value})}
+                                            name="expiryYear"
                                             value={paymentInfo.expiryYear}
+                                            onValueChange={(value) => setPaymentInfo(prev => ({ ...prev, expiryYear: value }))}
+                                            disabled={loading || !foundTicket || foundTicket?.status === 'paid'}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger id="expire-year">
                                                 <SelectValue placeholder="YY" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -316,29 +567,43 @@ const PayTicket = () => {
                                             </SelectContent>
                                         </Select>
                                     </div>
-
-                                    <div className="space-y-2">
+                                    <div>
                                         <Label htmlFor="cvv">CVV</Label>
                                         <Input
                                             id="cvv"
+                                            name="cvv"
                                             placeholder="XXX"
+                                            maxLength={4}
                                             value={paymentInfo.cvv}
-                                            onChange={(e) => setPaymentInfo({...paymentInfo, cvv: e.target.value})}
+                                            onChange={handleInputChange}
+                                            disabled={loading || !foundTicket || foundTicket?.status === 'paid'}
                                         />
                                     </div>
                                 </div>
 
                                 <Button
                                     className="w-full mt-4"
-                                    disabled={!foundTicket}
                                     onClick={handlePayment}
+                                    disabled={loading || !foundTicket || foundTicket?.status === 'paid'}
                                 >
-                                    <CreditCard className="mr-2 h-4 w-4" />
-                                    Pay Ticket
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CreditCard className="mr-2 h-4 w-4" />
+                                            {foundTicket?.status === 'paid' 
+                                                ? 'Already Paid' 
+                                                : `Pay $${foundTicket ? foundTicket.amount.toFixed(2) : '0.00'}`
+                                            }
+                                        </>
+                                    )}
                                 </Button>
 
                                 {!foundTicket && (
-                                    <p className="text-sm text-center text-muted-foreground mt-2">
+                                    <p className="text-center text-gray-500 text-sm mt-2">
                                         Search for a ticket first to enable payment
                                     </p>
                                 )}
