@@ -6,21 +6,21 @@ const envVariables = loadEnvFile('./.env');
 
 const router = express.Router();
 
-// 添加全局请求日志记录中间件
+// Add global request logging middleware
 router.use((req, res, next) => {
-    console.log('【接收请求】方法:', req.method, '路径:', req.originalUrl);
-    console.log('【接收请求】查询参数:', req.query);
-    console.log('【接收请求】请求体:', req.body);
-    console.log('【接收请求】请求头:', req.headers);
+    console.log('【Request Received】Method:', req.method, 'Path:', req.originalUrl);
+    console.log('【Request Received】Query Parameters:', req.query);
+    console.log('【Request Received】Request Body:', req.body);
+    console.log('【Request Received】Request Headers:', req.headers);
     
-    // 记录原始响应发送方法
+    // Record original response send method
     const originalSend = res.send;
     
-    // 重写send方法以记录响应
+    // Override send method to log responses
     res.send = function(body) {
-        console.log('【发送响应】状态码:', res.statusCode);
-        console.log('【发送响应】内容:', typeof body === 'string' ? body : '[对象/Buffer]');
-        return originalSend.apply(this, arguments);
+        console.log('【Response Sent】Status Code:', res.statusCode);
+        console.log('【Response Sent】Content:', typeof body === 'string' ? body : '[Object/Buffer]');
+        return originalSend.call(this, body);
     };
     
     next();
@@ -182,7 +182,7 @@ router.get('/verify-vehicle', async (req, res) => {
         const result = await appService.verifyVehicle(plate, region, lotId);
         console.log("Verification result:", result);
         
-        // 确保响应头设置为JSON
+        // Ensure response header is set to JSON
         res.setHeader('Content-Type', 'application/json');
         res.status(200).json(result);
     } catch (error) {
@@ -296,14 +296,14 @@ router.get('/parking-lots/:lotId', async (req, res) => {
     }
 });
 
-// 获取所有违规记录，可选按停车场ID过滤
+// Get all violations, optionally filtered by parking lot ID
 router.get('/violations', async (req, res) => {
     try {
         const lotId = req.query.lotId;
         const startDate = req.query.startDate;
         const endDate = req.query.endDate;
 
-        // 验证日期格式
+        // Validate date format
         if (startDate && !isValidDateFormat(startDate)) {
             return res.status(400).json({
                 success: false,
@@ -345,13 +345,13 @@ router.get('/violations', async (req, res) => {
     }
 });
 
-// 获取所有支付记录
+// Get all payment records
 router.get('/payments', async (req, res) => {
     try {
         const startDate = req.query.startDate;
         const endDate = req.query.endDate;
 
-        // 验证日期格式
+        // Validate date format
         if (startDate && !isValidDateFormat(startDate)) {
             return res.status(400).json({
                 success: false,
@@ -393,13 +393,13 @@ router.get('/payments', async (req, res) => {
     }
 });
 
-// 辅助函数：验证日期格式
+// Helper function: Validate date format
 function isValidDateFormat(dateString) {
-    // 检查是否为ISO 8601格式（YYYY-MM-DD）
+    // Check if it's ISO 8601 format (YYYY-MM-DD)
     const regex = /^\d{4}-\d{2}-\d{2}$/;
     if (!regex.test(dateString)) return false;
     
-    // 进一步验证日期是否有效
+    // Further validate if the date is valid
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return false;
     
@@ -422,7 +422,7 @@ router.post('/violations', async (req, res) => {
         const result = await appService.createViolation(province, licensePlate, reason, lotId, vehicleId);
         console.log("Violation result:", result);
         
-        // 确保响应头设置为JSON
+        // Ensure response header is set to JSON
         res.setHeader('Content-Type', 'application/json');
         if (result.success) {
             res.status(201).json(result);
@@ -598,7 +598,7 @@ router.post('/admin/reports', async (req, res) => {
     }
 });
 
-// 新增路由：获取所有停车场的名称和ID
+// New route: Get names and IDs of all parking lots
 router.get('/parking-lots-names', async (req, res) => {
     try {
         const result = await appService.getAllParkingLotNames();
@@ -613,33 +613,33 @@ router.get('/parking-lots-names', async (req, res) => {
     }
 });
 
-// 新增路由：注册访客信息
+// New route: Register visitor information
 router.post('/visitors/register', async (req, res) => {
     try {
         const { fullName, phone, unitToVisit, region, licensePlate, parkingLotId } = req.body;
         
-        // 验证所有必填字段
+        // Validate all required fields
         if (!fullName || !phone || !unitToVisit || !region || !licensePlate || !parkingLotId) {
             return res.status(400).json({
                 success: false,
-                message: '所有字段都是必填的'
+                message: 'All fields are required'
             });
         }
         
-        // 验证电话号码格式（可选）
+        // Validate phone number format (optional)
         if (!/^\d{10,15}$/.test(phone)) {
             return res.status(400).json({
                 success: false,
-                message: '请输入有效的电话号码'
+                message: 'Please enter a valid phone number'
             });
         }
         
-        // 验证单元号是否为数字（可选）
+        // Validate unit number is a number (optional)
         const unitNumber = parseInt(unitToVisit, 10);
         if (isNaN(unitNumber)) {
             return res.status(400).json({
                 success: false,
-                message: '单元号必须是数字'
+                message: 'Unit number must be a number'
             });
         }
         
@@ -664,12 +664,12 @@ router.post('/visitors/register', async (req, res) => {
         console.error('Register visitor error:', error);
         res.status(500).json({
             success: false,
-            message: '服务器错误'
+            message: 'Server error'
         });
     }
 });
 
-// 获取单个违规记录
+// Get a single violation record
 router.get('/violations/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -683,7 +683,7 @@ router.get('/violations/:id', async (req, res) => {
         
         console.log(`Fetching violation with ID: ${id}`);
         
-        // 调用服务层方法获取单个违规记录
+        // Call service layer method to get a single violation record
         const result = await appService.getViolationById(id);
         
         if (result.success) {
@@ -705,7 +705,7 @@ router.get('/violations/:id', async (req, res) => {
     }
 });
 
-// 根据车牌和区域搜索违规记录
+// Search violations by license plate and region
 router.get('/violations/search', async (req, res) => {
     try {
         const { plate, region } = req.query;
@@ -719,11 +719,11 @@ router.get('/violations/search', async (req, res) => {
         
         console.log(`Searching violations by plate: ${plate}, region: ${region}`);
         
-        // 调用服务层方法搜索违规记录
+        // Call service layer method to search for violations
         const result = await appService.findViolationsByPlate(plate, region);
         
         if (result.success) {
-            // 处理字段名差异，确保一致的API响应
+            // Handle field name differences, ensure consistent API response
             const violations = result.violations.map(row => ({
                 ticketId: row.TICKETID || row.ticketId,
                 reason: row.REASON || row.reason,
@@ -751,7 +751,7 @@ router.get('/violations/search', async (req, res) => {
     }
 });
 
-// 获取指定停车场的活跃车辆
+// Get active vehicles for a specific parking lot
 router.get('/active-vehicles/:lotId', async (req, res) => {
     try {
         const { lotId } = req.params;
@@ -759,27 +759,27 @@ router.get('/active-vehicles/:lotId', async (req, res) => {
         if (!lotId) {
             return res.status(400).json({
                 success: false,
-                message: "请提供有效的停车场ID"
+                message: "Please provide a valid parking lot ID"
             });
         }
         
-        console.log(`获取停车场ID ${lotId} 的活跃车辆`);
+        console.log(`Getting active vehicles for parking lot ID ${lotId}`);
         const result = await appService.getActiveVehiclesByLotId(lotId);
         
         if (result.success) {
             res.status(200).json(result);
         } else {
-            console.error('获取活跃车辆失败:', result.message);
+            console.error('Failed to get active vehicles:', result.message);
             res.status(500).json({
                 success: false,
-                message: result.message || "获取活跃车辆数据时发生错误"
+                message: result.message || "Error occurred while getting active vehicles data"
             });
         }
     } catch (error) {
-        console.error('获取活跃车辆路由错误:', error);
+        console.error('Active vehicles route error:', error);
         res.status(500).json({
             success: false,
-            message: "服务器错误，无法获取活跃车辆数据"
+            message: "Server error, unable to retrieve active vehicles data"
         });
     }
 });
@@ -811,7 +811,7 @@ router.delete('/vehicles/:province/:licensePlate', async (req, res) => {
     }
 });
 
-// 获取所有车辆
+// Get all vehicles
 router.get('/vehicles/all', async (req, res) => {
     try {
         const result = await appService.getAllVehicles();

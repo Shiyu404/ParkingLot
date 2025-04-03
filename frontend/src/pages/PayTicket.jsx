@@ -67,10 +67,10 @@ const PayTicket = () => {
 
         try {
             console.log('Fetching citation:', citationNumber);
-            // 尝试两种URL格式
+            // Try two URL formats
             let response;
             try {
-                // 首先尝试使用config.js中定义的API端点
+                // First try using API endpoints defined in config.js
                 response = await fetch(API_ENDPOINTS.getViolationById(citationNumber));
                 
                 if (!response.ok) {
@@ -78,7 +78,7 @@ const PayTicket = () => {
                 }
             } catch (err) {
                 console.log('First API attempt failed, trying direct URL...');
-                // 如果失败，直接尝试不带/api前缀的URL
+                // If failed, try URL without /api prefix
                 response = await fetch(`/violations/${citationNumber}`);
                 
                 if (!response.ok) {
@@ -138,10 +138,10 @@ const PayTicket = () => {
 
         try {
             console.log('Searching plate:', licensePlate, 'region:', regionCode);
-            // 尝试两种URL格式
+            // Try two URL formats
             let response;
             try {
-                // 首先尝试使用config.js中定义的API端点
+                // First try using API endpoints defined in config.js
                 response = await fetch(API_ENDPOINTS.findViolationsByPlate(licensePlate, regionCode));
                 
                 if (!response.ok) {
@@ -149,7 +149,7 @@ const PayTicket = () => {
                 }
             } catch (err) {
                 console.log('First API attempt failed, trying direct URL...');
-                // 如果失败，直接尝试不带/api前缀的URL
+                // If failed, try URL without /api prefix
                 response = await fetch(`/violations/search?plate=${encodeURIComponent(licensePlate)}&region=${encodeURIComponent(regionCode)}`);
                 
                 if (!response.ok) {
@@ -231,14 +231,14 @@ const PayTicket = () => {
             // Use a default user ID for guest payments
             const userId = 1; // You may need to adjust this based on your system
             
-            // 确保lotId和ticketId是数值类型
+            // Ensure lotId and ticketId are numeric
             const lotIdNum = parseInt(foundTicket.lotId, 10);
             const ticketIdNum = parseInt(foundTicket.id, 10);
             
-            // 确保amount是数值类型
+            // Ensure amount is numeric
             const amountNum = parseFloat(foundTicket.amount);
             
-            // 打印请求数据用于调试
+            // Print request data for debugging
             console.log('Payment request data:', {
                 amount: amountNum,
                 paymentMethod: 'Credit Card',
@@ -248,7 +248,7 @@ const PayTicket = () => {
                 ticketId: ticketIdNum
             });
             
-            // 尝试直接路径
+            // Try direct path
             let response; 
             try {
                 response = await fetch('/payments', {
@@ -292,7 +292,7 @@ const PayTicket = () => {
                 }
             }
             
-            // 处理响应
+            // Process response
             const data = await response.json();
             
             if (data.success) {

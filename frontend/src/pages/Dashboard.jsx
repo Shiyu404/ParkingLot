@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Car, Users, AlertTriangle, Ticket, ArrowUpRight, ArrowDownRight, MapPin, Search, FileText, Loader2, Settings, ShieldCheck, BarChart3, Clock } from 'lucide-react';
 import DashboardCard from '@/components/dashboard/DashboardCard';
-import OccupancyChart from '@/components/dashboard/OccupancyChart';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
@@ -13,73 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
 import { API_ENDPOINTS } from '@/config';
-
-// North American regions
-const northAmericanRegions = [
-    // 加拿大省份
-    { value: 'AB', label: 'Alberta' },
-    { value: 'BC', label: 'British Columbia' },
-    { value: 'MB', label: 'Manitoba' },
-    { value: 'NB', label: 'New Brunswick' },
-    { value: 'NL', label: 'Newfoundland and Labrador' },
-    { value: 'NS', label: 'Nova Scotia' },
-    { value: 'ON', label: 'Ontario' },
-    { value: 'PE', label: 'Prince Edward Island' },
-    { value: 'QC', label: 'Quebec' },
-    { value: 'SK', label: 'Saskatchewan' },
-    
-    // 美国州
-    { value: 'AL', label: 'Alabama' },
-    { value: 'AK', label: 'Alaska' },
-    { value: 'AZ', label: 'Arizona' },
-    { value: 'AR', label: 'Arkansas' },
-    { value: 'CA', label: 'California' },
-    { value: 'CO', label: 'Colorado' },
-    { value: 'CT', label: 'Connecticut' },
-    { value: 'DE', label: 'Delaware' },
-    { value: 'FL', label: 'Florida' },
-    { value: 'GA', label: 'Georgia' },
-    { value: 'HI', label: 'Hawaii' },
-    { value: 'ID', label: 'Idaho' },
-    { value: 'IL', label: 'Illinois' },
-    { value: 'IN', label: 'Indiana' },
-    { value: 'IA', label: 'Iowa' },
-    { value: 'KS', label: 'Kansas' },
-    { value: 'KY', label: 'Kentucky' },
-    { value: 'LA', label: 'Louisiana' },
-    { value: 'ME', label: 'Maine' },
-    { value: 'MD', label: 'Maryland' },
-    { value: 'MA', label: 'Massachusetts' },
-    { value: 'MI', label: 'Michigan' },
-    { value: 'MN', label: 'Minnesota' },
-    { value: 'MS', label: 'Mississippi' },
-    { value: 'MO', label: 'Missouri' },
-    { value: 'MT', label: 'Montana' },
-    { value: 'NE', label: 'Nebraska' },
-    { value: 'NV', label: 'Nevada' },
-    { value: 'NH', label: 'New Hampshire' },
-    { value: 'NJ', label: 'New Jersey' },
-    { value: 'NM', label: 'New Mexico' },
-    { value: 'NY', label: 'New York' },
-    { value: 'NC', label: 'North Carolina' },
-    { value: 'ND', label: 'North Dakota' },
-    { value: 'OH', label: 'Ohio' },
-    { value: 'OK', label: 'Oklahoma' },
-    { value: 'OR', label: 'Oregon' },
-    { value: 'PA', label: 'Pennsylvania' },
-    { value: 'RI', label: 'Rhode Island' },
-    { value: 'SC', label: 'South Carolina' },
-    { value: 'SD', label: 'South Dakota' },
-    { value: 'TN', label: 'Tennessee' },
-    { value: 'TX', label: 'Texas' },
-    { value: 'UT', label: 'Utah' },
-    { value: 'VT', label: 'Vermont' },
-    { value: 'VA', label: 'Virginia' },
-    { value: 'WA', label: 'Washington' },
-    { value: 'WV', label: 'West Virginia' },
-    { value: 'WI', label: 'Wisconsin' },
-    { value: 'WY', label: 'Wyoming' }
-];
+import { northAmericanRegions } from '../lib/regions';
 
 const Dashboard = () => {
     const { toast } = useToast();
@@ -91,7 +25,6 @@ const Dashboard = () => {
     const [ticketReason, setTicketReason] = useState('No Valid Visitor Pass');
     const [activeParkingLot, setActiveParkingLot] = useState(null);
     const [currentVehicles, setCurrentVehicles] = useState([]);
-    const [recentActivity, setRecentActivity] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [stats, setStats] = useState([]);
     const [reportType, setReportType] = useState('violations');
@@ -101,6 +34,14 @@ const Dashboard = () => {
     const [reportData, setReportData] = useState(null);
     const [showReportModal, setShowReportModal] = useState(false);
     const [showResidentModal, setShowResidentModal] = useState(false);
+    const [showSecurityModal, setShowSecurityModal] = useState(false);
+    const [showCapacityModal, setShowCapacityModal] = useState(false);
+    const [showQuotasModal, setShowQuotasModal] = useState(false);
+    const [parkingCapacity, setParkingCapacity] = useState(100);
+    const [securityLevel, setSecurityLevel] = useState("medium");
+    const [cameraEnabled, setCameraEnabled] = useState(true);
+    const [accessControl, setAccessControl] = useState(true);
+    const [visitorHoursLimit, setVisitorHoursLimit] = useState(8);
 
     const container = {
         hidden: { opacity: 0 },
@@ -328,9 +269,6 @@ const Dashboard = () => {
                         progress: Math.round((openViolationsCount) / Math.max(10, openViolationsCount) * 100)
                     },
                 ]);
-                
-                // 5. 获取最近活动
-                await fetchRecentActivity(lotId);
             }
         } catch (error) {
             console.error("Error fetching parking lot details:", error);
@@ -340,19 +278,6 @@ const Dashboard = () => {
                 variant: "destructive",
             });
         }
-    };
-
-    // 获取最近活动记录
-    const fetchRecentActivity = async (lotId) => {
-        // 这里应该有一个获取最近活动的API
-        // 暂时使用模拟数据
-        setRecentActivity([
-            { id: 1, type: 'Visitor Pass', description: 'New pass for John Smith', time: '10 minutes ago', status: 'success' },
-            { id: 2, type: 'Violation', description: 'Unauthorized vehicle in spot A12', time: '25 minutes ago', status: 'warning' },
-            { id: 3, type: 'Vehicle Registration', description: 'New vehicle registered by Apt 204', time: '1 hour ago', status: 'info' },
-            { id: 4, type: 'Visitor Pass', description: 'Pass extended for Sarah Johnson', time: '2 hours ago', status: 'success' },
-            { id: 5, type: 'Violation', description: 'Expired visitor pass in spot B8', time: '3 hours ago', status: 'warning' },
-        ]);
     };
 
     const handleParkingLotChange = (value) => {
@@ -861,6 +786,50 @@ const Dashboard = () => {
         </Card>
     );
 
+    const renderManagementSettingsSection = () => (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center">
+                    <Settings className="mr-2 h-5 w-5" />
+                    Management Settings
+                </CardTitle>
+                <CardDescription>Manage parking facilities and security settings</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                    <Button variant="outline" className="w-full justify-start" onClick={() => setShowResidentModal(true)}>
+                        <Users className="mr-2 h-4 w-4" />
+                        Manage Residents Pass
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        className="w-full justify-start"
+                        onClick={() => setShowSecurityModal(true)}
+                    >
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        Security Settings
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        className="w-full justify-start"
+                        onClick={() => setShowCapacityModal(true)}
+                    >
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        Set Parking Capacity
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        className="w-full justify-start"
+                        onClick={() => setShowQuotasModal(true)}
+                    >
+                        <Clock className="mr-2 h-4 w-4" />
+                        Visitor Pass Quotas
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+    );
+
     const renderManagementFunctions = () => (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <Card>
@@ -921,36 +890,6 @@ const Dashboard = () => {
                             ) : (
                                 "Generate Report"
                             )}
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-            
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center">
-                        <Settings className="mr-2 h-5 w-5" />
-                        Management Settings
-                    </CardTitle>
-                    <CardDescription>Manage parking facilities and security settings</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <Button variant="outline" className="w-full justify-start" onClick={() => setShowResidentModal(true)}>
-                            <Users className="mr-2 h-4 w-4" />
-                            Manage Residents
-                        </Button>
-                        <Button variant="outline" className="w-full justify-start">
-                            <ShieldCheck className="mr-2 h-4 w-4" />
-                            Security Settings
-                        </Button>
-                        <Button variant="outline" className="w-full justify-start">
-                            <BarChart3 className="mr-2 h-4 w-4" />
-                            Set Parking Capacity
-                        </Button>
-                        <Button variant="outline" className="w-full justify-start">
-                            <Clock className="mr-2 h-4 w-4" />
-                            Visitor Pass Quotas
                         </Button>
                     </div>
                 </CardContent>
@@ -1068,7 +1007,7 @@ const Dashboard = () => {
                             <motion.div key={index} variants={item}>
                                 <DashboardCard
                                     title={stat.title}
-                                    icon={stat.icon}
+                                    icon={null}
                                     className={stat.title === 'Open Violations' ? 'border-orange-200' : ''}
                                 >
                                     <div className="flex items-end justify-between mb-2">
@@ -1090,51 +1029,6 @@ const Dashboard = () => {
 
                     {renderLicensePlateVerification()}
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                        <motion.div
-                            className="lg:col-span-2"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: 0.2 }}
-                        >
-                            <DashboardCard
-                                title="Parking Occupancy"
-                                description="24-hour trend"
-                            >
-                                <OccupancyChart />
-                            </DashboardCard>
-                        </motion.div>
-
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: 0.3 }}
-                        >
-                            <DashboardCard
-                                title="Recent Activity"
-                                description="Latest updates and events"
-                            >
-                                <div className="space-y-4">
-                                    {recentActivity.map((activity) => (
-                                        <div key={activity.id} className="flex items-start space-x-3 pb-3 border-b last:border-0 border-gray-100">
-                                            <div className={`w-2 h-2 mt-2 rounded-full ${
-                                                activity.status === 'success' ? 'bg-green-500' :
-                                                    activity.status === 'warning' ? 'bg-orange-500' : 'bg-blue-500'
-                                            }`}></div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium">{activity.description}</p>
-                                                <p className="text-xs text-gray-500">{activity.time}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <Button variant="ghost" size="sm" className="w-full text-primary justify-center mt-2">
-                                        View All Activity
-                                    </Button>
-                                </div>
-                            </DashboardCard>
-                        </motion.div>
-                    </div>
-
                     <motion.div
                         className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
                         initial={{ opacity: 0, y: 20 }}
@@ -1142,6 +1036,7 @@ const Dashboard = () => {
                         transition={{ duration: 0.6, delay: 0.4 }}
                     >
                         {renderActiveVehiclesSection()}
+                        {renderManagementSettingsSection()}
                     </motion.div>
 
                     {renderManagementFunctions()}
@@ -1155,7 +1050,7 @@ const Dashboard = () => {
             <Dialog open={showResidentModal} onOpenChange={setShowResidentModal}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Manage Residents</DialogTitle>
+                        <DialogTitle>Manage Residents Pass</DialogTitle>
                         <DialogDescription>
                             Adjust visitor pass quotas for residents
                         </DialogDescription>
@@ -1187,7 +1082,18 @@ const Dashboard = () => {
                                         <Input type="number" defaultValue="5" min="0" max="10" />
                                     </div>
                                 </div>
-                                <Button className="w-full">Update All Residents</Button>
+                                <Button 
+                                    className="w-full"
+                                    onClick={() => {
+                                        toast({
+                                            title: "Residents Updated",
+                                            description: "Pass quotas have been updated for all residents.",
+                                        });
+                                        setShowResidentModal(false);
+                                    }}
+                                >
+                                    Update All Residents
+                                </Button>
                             </div>
                         </TabsContent>
 
@@ -1217,10 +1123,488 @@ const Dashboard = () => {
                                         <Input type="number" defaultValue="5" min="0" max="10" />
                                     </div>
                                 </div>
-                                <Button className="w-full">Update Resident</Button>
+                                <Button 
+                                    className="w-full"
+                                    onClick={() => {
+                                        toast({
+                                            title: "Resident Updated",
+                                            description: "Pass quota has been updated for the selected resident.",
+                                        });
+                                        setShowResidentModal(false);
+                                    }}
+                                >
+                                    Update Resident
+                                </Button>
                             </div>
                         </TabsContent>
                     </Tabs>
+                </DialogContent>
+            </Dialog>
+
+            {/* Security Settings Modal */}
+            <Dialog open={showSecurityModal} onOpenChange={setShowSecurityModal}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Security Settings</DialogTitle>
+                        <DialogDescription>
+                            Manage security settings for the parking facility
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Tabs defaultValue="general" className="w-full">
+                        <TabsList className="grid grid-cols-3 mb-4">
+                            <TabsTrigger value="general">General</TabsTrigger>
+                            <TabsTrigger value="cameras">Cameras</TabsTrigger>
+                            <TabsTrigger value="access">Access Control</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="general">
+                            <div className="space-y-4">
+                                <div>
+                                    <Label>Security Level</Label>
+                                    <Select
+                                        value={securityLevel}
+                                        onValueChange={setSecurityLevel}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="low">Low</SelectItem>
+                                            <SelectItem value="medium">Medium</SelectItem>
+                                            <SelectItem value="high">High</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {securityLevel === "low" && "Basic security measures with minimal monitoring."}
+                                        {securityLevel === "medium" && "Standard security with regular monitoring and access control."}
+                                        {securityLevel === "high" && "Enhanced security with 24/7 monitoring, strict access control and alerts."}
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <Label>Security Personnel</Label>
+                                    <Select defaultValue="parttime">
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">None</SelectItem>
+                                            <SelectItem value="parttime">Part-time</SelectItem>
+                                            <SelectItem value="fulltime">Full-time</SelectItem>
+                                            <SelectItem value="24hours">24/7 Coverage</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                
+                                <div>
+                                    <Label>Incident Reporting</Label>
+                                    <Select defaultValue="enabled">
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="enabled">Enabled</SelectItem>
+                                            <SelectItem value="disabled">Disabled</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                
+                                <div className="flex items-center justify-between space-y-0 pt-2">
+                                    <Label>Enable Security Notifications</Label>
+                                    <Select defaultValue="all">
+                                        <SelectTrigger className="w-[160px]">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">None</SelectItem>
+                                            <SelectItem value="critical">Critical Only</SelectItem>
+                                            <SelectItem value="all">All Notifications</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="cameras">
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex items-center justify-between space-y-0">
+                                        <Label>Camera System</Label>
+                                        <Select
+                                            value={cameraEnabled ? "enabled" : "disabled"}
+                                            onValueChange={(value) => setCameraEnabled(value === "enabled")}
+                                        >
+                                            <SelectTrigger className="w-[160px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="enabled">Enabled</SelectItem>
+                                                <SelectItem value="disabled">Disabled</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {cameraEnabled 
+                                            ? "Surveillance cameras are active and monitoring the facility." 
+                                            : "Camera surveillance is currently disabled."}
+                                    </p>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <Label>Camera Locations</Label>
+                                    <div className="grid grid-cols-2 gap-2 mt-1">
+                                        <div className="flex items-center space-x-2">
+                                            <input type="checkbox" id="entrance" defaultChecked />
+                                            <label htmlFor="entrance">Entrance</label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <input type="checkbox" id="exit" defaultChecked />
+                                            <label htmlFor="exit">Exit</label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <input type="checkbox" id="level1" defaultChecked />
+                                            <label htmlFor="level1">Level 1</label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <input type="checkbox" id="level2" defaultChecked />
+                                            <label htmlFor="level2">Level 2</label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <input type="checkbox" id="stairwell" defaultChecked />
+                                            <label htmlFor="stairwell">Stairwells</label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <input type="checkbox" id="elevator" defaultChecked />
+                                            <label htmlFor="elevator">Elevators</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <Label>Footage Retention Period (Days)</Label>
+                                    <Input type="number" defaultValue="30" min="1" max="90" />
+                                </div>
+                                
+                                <div>
+                                    <Label>Motion Detection</Label>
+                                    <Select defaultValue="enabled">
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="enabled">Enabled</SelectItem>
+                                            <SelectItem value="disabled">Disabled</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="access">
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex items-center justify-between space-y-0">
+                                        <Label>Access Control System</Label>
+                                        <Select
+                                            value={accessControl ? "enabled" : "disabled"}
+                                            onValueChange={(value) => setAccessControl(value === "enabled")}
+                                        >
+                                            <SelectTrigger className="w-[160px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="enabled">Enabled</SelectItem>
+                                                <SelectItem value="disabled">Disabled</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {accessControl 
+                                            ? "Access control is active, requiring proper credentials for entry." 
+                                            : "Access control is currently disabled."}
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <Label>Access Method</Label>
+                                    <Select defaultValue="keycard">
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="keycard">Key Card</SelectItem>
+                                            <SelectItem value="fob">Key Fob</SelectItem>
+                                            <SelectItem value="mobile">Mobile App</SelectItem>
+                                            <SelectItem value="multiple">Multiple Methods</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                
+                                <div>
+                                    <Label>Visitor Access Requirements</Label>
+                                    <Select defaultValue="registration">
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No Verification</SelectItem>
+                                            <SelectItem value="registration">Pre-registration Required</SelectItem>
+                                            <SelectItem value="resident">Resident Approval Required</SelectItem>
+                                            <SelectItem value="id">ID Check Required</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                
+                                <div>
+                                    <Label>Restricted Hours</Label>
+                                    <div className="grid grid-cols-2 gap-4 mt-1">
+                                        <div>
+                                            <Label className="text-xs">From</Label>
+                                            <Input type="time" defaultValue="22:00" />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs">To</Label>
+                                            <Input type="time" defaultValue="06:00" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                    <DialogFooter className="mt-6">
+                        <Button variant="outline" onClick={() => setShowSecurityModal(false)}>Cancel</Button>
+                        <Button onClick={() => {
+                            toast({
+                                title: "Security Settings Updated",
+                                description: "Security settings have been updated successfully.",
+                            });
+                            setShowSecurityModal(false);
+                        }}>
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Set Parking Capacity Modal */}
+            <Dialog open={showCapacityModal} onOpenChange={setShowCapacityModal}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Set Parking Capacity</DialogTitle>
+                        <DialogDescription>
+                            Adjust the parking capacity for the selected parking facility
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6">
+                        <div className="text-center py-4">
+                            <div className="inline-flex items-center justify-center p-8 rounded-full bg-blue-50 mb-4">
+                                <Car className="h-12 w-12 text-blue-600" />
+                            </div>
+                            <div className="text-4xl font-bold">{parkingCapacity}</div>
+                            <div className="text-sm text-gray-500">Total Parking Spaces</div>
+                        </div>
+                        
+                        <div className="px-6">
+                            <Input
+                                type="range"
+                                min="10"
+                                max="500"
+                                step="10"
+                                value={parkingCapacity}
+                                onChange={(e) => setParkingCapacity(Number(e.target.value))}
+                                className="w-full"
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>10</span>
+                                <span>250</span>
+                                <span>500</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <Label>Current Capacity</Label>
+                            <div className="flex gap-2 mt-1">
+                                <Input
+                                    type="number"
+                                    value={parkingCapacity}
+                                    onChange={(e) => setParkingCapacity(Number(e.target.value))}
+                                    min="10"
+                                    max="500"
+                                />
+                                <Button variant="outline" onClick={() => setParkingCapacity(100)}>Reset</Button>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <Label>Parking Space Allocation</Label>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label className="text-xs">Resident Spaces</Label>
+                                    <Input 
+                                        type="number" 
+                                        defaultValue={Math.round(parkingCapacity * 0.7)}
+                                        min="0"
+                                        max={parkingCapacity} 
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-xs">Visitor Spaces</Label>
+                                    <Input 
+                                        type="number" 
+                                        defaultValue={Math.round(parkingCapacity * 0.2)}
+                                        min="0"
+                                        max={parkingCapacity} 
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label className="text-xs">Reserved Spaces</Label>
+                                    <Input 
+                                        type="number" 
+                                        defaultValue={Math.round(parkingCapacity * 0.05)}
+                                        min="0"
+                                        max={parkingCapacity} 
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-xs">Disabled Spaces</Label>
+                                    <Input 
+                                        type="number" 
+                                        defaultValue={Math.round(parkingCapacity * 0.05)}
+                                        min="0"
+                                        max={parkingCapacity} 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowCapacityModal(false)}>Cancel</Button>
+                        <Button onClick={() => {
+                            toast({
+                                title: "Parking Capacity Updated",
+                                description: `Parking capacity has been set to ${parkingCapacity} spaces.`,
+                            });
+                            setShowCapacityModal(false);
+                        }}>
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Visitor Pass Quotas Modal */}
+            <Dialog open={showQuotasModal} onOpenChange={setShowQuotasModal}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Visitor Pass Quotas</DialogTitle>
+                        <DialogDescription>
+                            Manage visitor pass quotas for the selected parking facility
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Tabs defaultValue="general" className="w-full">
+                        <TabsList className="grid grid-cols-2 mb-4">
+                            <TabsTrigger value="general">General Settings</TabsTrigger>
+                            <TabsTrigger value="special">Special Days</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="general">
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label>8-Hour Passes</Label>
+                                        <Input type="number" defaultValue="5" min="0" max="20" />
+                                    </div>
+                                    <div>
+                                        <Label>24-Hour Passes</Label>
+                                        <Input type="number" defaultValue="3" min="0" max="10" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label>Weekend Passes</Label>
+                                        <Input type="number" defaultValue="2" min="0" max="5" />
+                                    </div>
+                                    <div>
+                                        <Label>Visitor Hours Limit</Label>
+                                        <Input
+                                            type="number"
+                                            value={visitorHoursLimit}
+                                            onChange={(e) => setVisitorHoursLimit(Number(e.target.value))}
+                                            min="1"
+                                            max="24"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label>Max Visitors Per Unit</Label>
+                                    <Input type="number" defaultValue="3" min="1" max="10" />
+                                </div>
+                                <div>
+                                    <Label>Auto-Reset Period</Label>
+                                    <Select defaultValue="monthly">
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="weekly">Weekly</SelectItem>
+                                            <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                                            <SelectItem value="monthly">Monthly</SelectItem>
+                                            <SelectItem value="quarterly">Quarterly</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="special">
+                            <div className="space-y-4">
+                                <div>
+                                    <Label>Holiday Bonus Passes</Label>
+                                    <Input type="number" defaultValue="2" min="0" max="5" />
+                                </div>
+                                <div>
+                                    <Label>Holiday Dates</Label>
+                                    <div className="mt-2 space-y-2">
+                                        <div className="flex items-center justify-between border rounded-md p-2">
+                                            <span>New Year's Day</span>
+                                            <Button variant="outline" size="sm">Remove</Button>
+                                        </div>
+                                        <div className="flex items-center justify-between border rounded-md p-2">
+                                            <span>Independence Day</span>
+                                            <Button variant="outline" size="sm">Remove</Button>
+                                        </div>
+                                        <div className="flex items-center justify-between border rounded-md p-2">
+                                            <span>Thanksgiving</span>
+                                            <Button variant="outline" size="sm">Remove</Button>
+                                        </div>
+                                        <div className="flex items-center justify-between border rounded-md p-2">
+                                            <span>Christmas</span>
+                                            <Button variant="outline" size="sm">Remove</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Input type="date" placeholder="Add holiday date" />
+                                    <Button>Add</Button>
+                                </div>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                    <DialogFooter className="mt-6">
+                        <Button variant="outline" onClick={() => setShowQuotasModal(false)}>Cancel</Button>
+                        <Button onClick={() => {
+                            toast({
+                                title: "Visitor Pass Quotas Updated",
+                                description: "Visitor pass quotas have been updated for all units.",
+                            });
+                            setShowQuotasModal(false);
+                        }}>
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>

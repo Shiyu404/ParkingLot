@@ -9,75 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Car, User, Home, Phone, Check, Calendar, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { API_ENDPOINTS } from '@/config';
-
-// US and Canada states/provinces
-const northAmericanRegions = [
-    // Canadian Provinces
-    { value: 'AB', label: 'Alberta' },
-    { value: 'BC', label: 'British Columbia' },
-    { value: 'MB', label: 'Manitoba' },
-    { value: 'NB', label: 'New Brunswick' },
-    { value: 'NL', label: 'Newfoundland and Labrador' },
-    { value: 'NS', label: 'Nova Scotia' },
-    { value: 'ON', label: 'Ontario' },
-    { value: 'PE', label: 'Prince Edward Island' },
-    { value: 'QC', label: 'Quebec' },
-    { value: 'SK', label: 'Saskatchewan' },
-    { value: 'NT', label: 'Northwest Territories' },
-    { value: 'NU', label: 'Nunavut' },
-    { value: 'YT', label: 'Yukon' },
-    // US States
-    { value: 'AL', label: 'Alabama' },
-    { value: 'AK', label: 'Alaska' },
-    { value: 'AZ', label: 'Arizona' },
-    { value: 'AR', label: 'Arkansas' },
-    { value: 'CA', label: 'California' },
-    { value: 'CO', label: 'Colorado' },
-    { value: 'CT', label: 'Connecticut' },
-    { value: 'DE', label: 'Delaware' },
-    { value: 'FL', label: 'Florida' },
-    { value: 'GA', label: 'Georgia' },
-    { value: 'HI', label: 'Hawaii' },
-    { value: 'ID', label: 'Idaho' },
-    { value: 'IL', label: 'Illinois' },
-    { value: 'IN', label: 'Indiana' },
-    { value: 'IA', label: 'Iowa' },
-    { value: 'KS', label: 'Kansas' },
-    { value: 'KY', label: 'Kentucky' },
-    { value: 'LA', label: 'Louisiana' },
-    { value: 'ME', label: 'Maine' },
-    { value: 'MD', label: 'Maryland' },
-    { value: 'MA', label: 'Massachusetts' },
-    { value: 'MI', label: 'Michigan' },
-    { value: 'MN', label: 'Minnesota' },
-    { value: 'MS', label: 'Mississippi' },
-    { value: 'MO', label: 'Missouri' },
-    { value: 'MT', label: 'Montana' },
-    { value: 'NE', label: 'Nebraska' },
-    { value: 'NV', label: 'Nevada' },
-    { value: 'NH', label: 'New Hampshire' },
-    { value: 'NJ', label: 'New Jersey' },
-    { value: 'NM', label: 'New Mexico' },
-    { value: 'NY', label: 'New York' },
-    { value: 'NC', label: 'North Carolina' },
-    { value: 'ND', label: 'North Dakota' },
-    { value: 'OH', label: 'Ohio' },
-    { value: 'OK', label: 'Oklahoma' },
-    { value: 'OR', label: 'Oregon' },
-    { value: 'PA', label: 'Pennsylvania' },
-    { value: 'RI', label: 'Rhode Island' },
-    { value: 'SC', label: 'South Carolina' },
-    { value: 'SD', label: 'South Dakota' },
-    { value: 'TN', label: 'Tennessee' },
-    { value: 'TX', label: 'Texas' },
-    { value: 'UT', label: 'Utah' },
-    { value: 'VT', label: 'Vermont' },
-    { value: 'VA', label: 'Virginia' },
-    { value: 'WA', label: 'Washington' },
-    { value: 'WV', label: 'West Virginia' },
-    { value: 'WI', label: 'Wisconsin' },
-    { value: 'WY', label: 'Wyoming' }
-];
+import { northAmericanRegions } from '../lib/regions';
 
 const VisitorRequest = () => {
     const navigate = useNavigate();
@@ -97,19 +29,19 @@ const VisitorRequest = () => {
         region: '',
     });
 
-    // 获取停车场列表
+    // Fetch parking lot list
     useEffect(() => {
         const fetchParkingLots = async () => {
             try {
                 setIsLoading(true);
                 
-                // 首先获取停车场名称列表
+                // First get parking lot name list
                 const namesResponse = await fetch(API_ENDPOINTS.getAllParkingLotNames);
                 if (namesResponse.ok) {
                     const namesData = await namesResponse.json();
                     
                     if (namesData.success && namesData.parkingLots) {
-                        // 注意：后端返回的键名是大写的
+                        // Note: Backend returns keys in uppercase
                         const formattedLots = namesData.parkingLots.map(lot => ({
                             id: lot.LOTID.toString(),
                             name: lot.LOTNAME || `Parking Lot ${lot.LOTID}`
@@ -122,7 +54,7 @@ const VisitorRequest = () => {
                     }
                 }
                 
-                // 如果获取名称失败，回退到获取基本停车场信息
+                // If name fetch fails, fallback to basic parking lot info
                 const apiUrl = API_ENDPOINTS.getAllParkingLots;
                 const response = await fetch(apiUrl);
                 
@@ -139,7 +71,7 @@ const VisitorRequest = () => {
                 const data = JSON.parse(text);
                 
                 if (data.success && data.parkingLots) {
-                    // 转换数据格式
+                    // Transform data format
                     setParkingLots(data.parkingLots.map(lot => ({
                         id: lot.lotId.toString(),
                         name: `Parking Lot ${lot.lotId}`
@@ -189,24 +121,24 @@ const VisitorRequest = () => {
             setIsLoading(true);
 
             
-            // 直接调用已知可用的API端点
+            // Directly call the known working API endpoint
             const apiUrl = API_ENDPOINTS.register;
 
             
-            // 构建访客数据
+            // Build visitor data
             const visitorData = {
                 name: formData.fullName,
                 phone: formData.phone,
-                password: formData.phone, // 使用电话号码作为初始密码
+                password: formData.phone, // Use phone number as initial password
                 userType: 'visitor',
-                unitNumber: null, // 显式设置为null，因为后端检查需要
+                unitNumber: null, // Explicitly set to null as backend check requires
                 hostInformation: `Visiting Unit ${formData.unitToVisit}`,
                 role: 'user'
             };
             
 
             console.log('Registering visitor with data:', visitorData);
-            // 第一步：注册访客用户
+            // Step 1: Register visitor user
             const userResponse = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
@@ -231,17 +163,17 @@ const VisitorRequest = () => {
                 throw new Error(userData.message || 'Visitor registration failed');
             }
             
-            // 第二步：注册车辆
+            // Step 2: Register vehicle
             const userId = userData.user.id;
             const now = new Date();
             
-            // 不设置有效时间，因为需要等待住户审批
+            // Do not set valid time as it needs resident approval
             const vehicleData = {
                 userId: userId,
                 province: formData.region,
                 licensePlate: formData.licensePlate,
                 lotId: formData.parkingLotId,
-                // 不设置 parkingUntil，由住户审批时确定
+                // Do not set parkingUntil, to be determined by resident approval
                 parkingUntil: new Date(now.getTime()).toISOString().replace('T', ' ').substring(0, 19)
             };
             

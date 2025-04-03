@@ -10,23 +10,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { format, formatDistance } from 'date-fns';
 import { API_ENDPOINTS } from '@/config';
-import { VisitorPass } from '@/components/VisitorPass';
-
-// North American regions
-const northAmericanRegions = [
-  // US States
-  { value: 'AL', label: 'Alabama' },
-  { value: 'AK', label: 'Alaska' },
-  { value: 'AZ', label: 'Arizona' },
-  { value: 'CA', label: 'California' },
-  // Add more states as needed
-  // Canadian Provinces
-  { value: 'AB', label: 'Alberta' },
-  { value: 'BC', label: 'British Columbia' },
-  { value: 'ON', label: 'Ontario' },
-  { value: 'QC', label: 'Quebec' },
-  // Add more provinces as needed
-];
+import VisitorPassCard from "@/components/VisitorPassCard";
+import { northAmericanRegions } from '../lib/regions';
 
 // Default pass types and quotas
 const DEFAULT_PASS_TYPES = [
@@ -240,7 +225,7 @@ export default function ResidentDashboard() {
   };
   
   if (loading) {
-  return (
+    return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
@@ -252,16 +237,16 @@ export default function ResidentDashboard() {
       <div className="grid gap-4 md:grid-cols-2">
         {/* Active Visitor Passes */}
         <Card>
-            <CardHeader>
+          <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
               Active Visitor Passes
-              </CardTitle>
+            </CardTitle>
             <CardDescription>
               Currently active visitor passes
             </CardDescription>
-            </CardHeader>
-            <CardContent>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-4">
               {activeVisitors.length === 0 ? (
                 <div className="text-center text-muted-foreground">
@@ -284,7 +269,7 @@ export default function ResidentDashboard() {
                   </div>
                 ))
               )}
-              </div>
+            </div>
           </CardContent>
         </Card>
 

@@ -30,13 +30,13 @@ const Violations = () => {
     show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
   };
 
-  // 获取所有违规记录
+  // Fetch all violation records
   useEffect(() => {
     const fetchViolations = async () => {
       try {
         setLoading(true);
-        // 如果有用户ID，可以获取特定用户的违规记录：/violations/user/:userId
-        // 如果是管理员界面，可以获取所有违规记录，根据实际API调整
+        // If there is a user ID, you can get specific user's violation records: /violations/user/:userId
+        // If it's an admin interface, you can get all violation records, adjust according to actual API
         const response = await fetch('/api/violations');
         
         if (!response.ok) {
@@ -46,7 +46,7 @@ const Violations = () => {
         const data = await response.json();
         
         if (data.success) {
-          // 格式化数据，确保字段名称符合组件需要
+          // Format data to ensure field names match component requirements
           const formattedViolations = data.violations.map(violation => ({
             id: violation.ticketId,
             licensePlate: violation.licensePlate,
@@ -57,7 +57,7 @@ const Violations = () => {
             date: new Date(violation.time).toLocaleDateString(),
             time: new Date(violation.time).toLocaleTimeString(),
             status: violation.status || 'pending',
-            fine: '$50', // 可根据实际情况设置罚款金额
+            fine: '$50', // Set fine amount based on actual situation
             lotId: violation.lotId
           }));
           setViolations(formattedViolations);
@@ -80,10 +80,10 @@ const Violations = () => {
     fetchViolations();
   }, [toast]);
 
-  // 处理记录状态更新
+  // Handle record status update
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      // 根据实际API调整
+      // Adjust according to actual API
       const response = await fetch(`/api/violations/${id}/status`, {
         method: 'PUT',
         headers: {
@@ -99,7 +99,7 @@ const Violations = () => {
       const data = await response.json();
       
       if (data.success) {
-        // 更新本地状态
+        // Update local state
         setViolations(prev => 
           prev.map(violation => 
             violation.id === id ? { ...violation, status: newStatus } : violation
@@ -123,15 +123,15 @@ const Violations = () => {
     }
   };
 
-  // 过滤显示的违规记录
+  // Filter displayed violation records
   const filteredViolations = violations.filter(violation => {
-    // 根据搜索词过滤
+    // Filter by search term
     const matchesSearch = searchTerm === '' || 
       violation.licensePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
       violation.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
       violation.province?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // 根据状态过滤
+    // Filter by status
     const matchesFilter = filter === 'all' || violation.status === filter;
     
     return matchesSearch && matchesFilter;

@@ -66,7 +66,12 @@ export default defineConfig(({ mode }) => ({
     react({
       include: "**/*.{js,jsx,ts,tsx}",
       jsxRuntime: 'automatic',
-      jsxImportSource: 'react'
+      jsxImportSource: 'react',
+      babel: {
+        plugins: [
+          ['@babel/plugin-transform-react-jsx', { runtime: 'automatic' }]
+        ]
+      }
     }),
     mode === 'development' &&
     componentTagger(),

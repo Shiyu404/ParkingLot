@@ -178,18 +178,6 @@ VALUES (7, 95, 95, '147 Mountain View Dr, Vancouver, BC', 'Mountainview Heights'
 INSERT INTO ParkingLot (LOT_ID, TOTAL_SPACES, AVAILABLE_SPACES, ADDRESS, LOT_NAME) 
 VALUES (8, 130, 130, '258 Ocean Park Ave, Vancouver, BC', 'Oceanview Estates');
 
--- Create ParkingRecord table
-CREATE TABLE ParkingRecord (
-    RECORD_ID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    VEHICLE_PLATE VARCHAR2(20) NOT NULL,
-    LOT_ID NUMBER,
-    ENTRY_TIME TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    EXIT_TIME TIMESTAMP,
-    STATUS VARCHAR2(20) DEFAULT 'active',
-    CONSTRAINT fk_lot_id FOREIGN KEY (LOT_ID) REFERENCES ParkingLot(LOT_ID),
-    CONSTRAINT chk_status CHECK (STATUS IN ('active', 'completed', 'violation'))
-);
-
 
 -- Create Vehicles table
 CREATE TABLE Vehicles (
@@ -205,8 +193,8 @@ CREATE TABLE Vehicles (
     CONSTRAINT unique_license_plate UNIQUE (PROVINCE, LICENSE_PLATE)
 );
 
--- 添加测试车辆数据
--- 有效通行证（未过期）的车辆
+-- Add test vehicle data
+-- Vehicles with valid passes (not expired)
 INSERT INTO Vehicles (USER_ID, PROVINCE, LICENSE_PLATE, PARKING_UNTIL, CURRENT_LOT_ID)
 VALUES (2, 'CA', 'TEST123', SYSTIMESTAMP + INTERVAL '1' DAY, 1);
 
@@ -216,7 +204,7 @@ VALUES (3, 'NY', 'ABC123', SYSTIMESTAMP + INTERVAL '2' DAY, 1);
 INSERT INTO Vehicles (USER_ID, PROVINCE, LICENSE_PLATE, PARKING_UNTIL, CURRENT_LOT_ID)
 VALUES (4, 'TX', 'XYZ789', SYSTIMESTAMP + INTERVAL '3' DAY, 2);
 
--- 过期通行证的车辆
+-- Vehicles with expired passes
 INSERT INTO Vehicles (USER_ID, PROVINCE, LICENSE_PLATE, PARKING_UNTIL, CURRENT_LOT_ID)
 VALUES (2, 'ON', 'EXPIRED', SYSTIMESTAMP - INTERVAL '1' DAY, 1);
 

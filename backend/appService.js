@@ -100,6 +100,60 @@ async function testOracleConnection() {
 //     });
 // }
 
+// Initialize database using init.sql file
+async function initializeDatabase() {
+    console.log('Initializing database using init.sql file...');
+    return await withOracleDB(async (connection) => {
+        try {
+            // Read the SQL file content
+            const fs = require('fs');
+            const path = require('path');
+            const sqlFilePath = path.join(__dirname, 'init.sql');
+            
+            // Check if file exists
+            if (!fs.existsSync(sqlFilePath)) {
+                console.error('init.sql file not found at path:', sqlFilePath);
+                return false;
+            }
+            
+            // Read and split the SQL statements by semicolon
+            const sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
+            const sqlStatements = sqlContent.split(';')
+                .map(statement => statement.trim())
+                .filter(statement => statement.length > 0);
+            
+            // Execute each SQL statement
+            for (const sql of sqlStatements) {
+                try {
+                    await connection.execute(sql);
+                    console.log('Executed SQL statement successfully');
+                } catch (err) {
+                    // Log error but continue with next statement
+                    console.error('Error executing SQL statement:', err.message);
+                    console.log('SQL statement that failed:', sql);
+                }
+            }
+            
+            // Commit all changes
+            await connection.commit();
+            console.log('Database initialization completed successfully');
+            return true;
+        } catch (err) {
+            console.error('Database initialization error:', err);
+            return false;
+        }
+    });
+}
+
+// Call database initialization when the application starts
+initializeDatabase().then(success => {
+    if (success) {
+        console.log('Database initialized successfully');
+    } else {
+        console.error('Failed to initialize database');
+    }
+});
+
 //1.1 Log in
 async function loginUser(phone, password) {
     return await withOracleDB(async (connection) => {
@@ -407,7 +461,7 @@ async function getUserVisitorPasses(userId) {
 
             if (result.rows.length > 0) {
                 const visitorPasses = result.rows.map(row => {
-                    // 计算通行证有效期
+                    // Calculate pass validity period
                     const validTime = new Date(row.CREATED_AT);
                     validTime.setHours(validTime.getHours() + row.VALID_TIME);
                     
@@ -440,7 +494,7 @@ async function getUserVisitorPasses(userId) {
 async function applyVisitorPasses(userId, hours, visitorPlate) {
     return await withOracleDB(async (connection) => {
         try {
-            // 检查用户是否存在
+            // Check if user exists
             const userResult = await connection.execute(
                 `SELECT * FROM Users WHERE ID = :userId`,
                 { userId },
@@ -451,7 +505,7 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                 return { success: false, message: 'User not found' };
             }
             
-            // 检查用户配额
+            // Check user quota
             const quotaResult = await connection.execute(
                 `SELECT COUNT(*) as active_passes
                  FROM VisitorPasses 
@@ -465,7 +519,7 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
             const activePasses = quotaResult.rows[0].ACTIVE_PASSES;
             let maxPasses;
             
-            // 根据通行证时长设置最大配额
+            // Set maximum quota based on pass duration
             if (hours === 8) {
                 maxPasses = 5;
             } else if (hours === 24) {
@@ -480,18 +534,18 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                 return { success: false, message: 'Pass quota exceeded' };
             }
 
-            // 解析车牌号
+            // Parse license plate
             const [province, licensePlate] = visitorPlate.split('-');
             if (!province || !licensePlate) {
                 return { success: false, message: 'Invalid visitor plate format' };
             }
 
-            // 计算停车结束时间（默认24小时，可以根据需要修改）
+            // Calculate parking end time (default 24 hours, can be modified as needed)
             const parkingUntil = new Date();
-            parkingUntil.setHours(parkingUntil.getHours() + 24); // 添加24小时
+            parkingUntil.setHours(parkingUntil.getHours() + 24); // Add 24 hours
             const parkingUntilStr = parkingUntil.toISOString().replace('T', ' ').substring(0, 19);
             
-            // 1. 创建访客通行证
+            // 1. Create visitor pass
             const passResult = await connection.execute(
                 `INSERT INTO VisitorPasses (USER_ID, VALID_TIME, STATUS, VISITOR_PLATE)
                  VALUES (:userId, :hours, 'active', :visitorPlate)
@@ -509,7 +563,7 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                 return { success: false, message: 'Failed to create visitor pass' };
             }
 
-            // 2. 在Vehicles表中添加或更新车辆记录
+            // 2. Add or update vehicle record in Vehicles table
             const vehicleResult = await connection.execute(
                 `MERGE INTO Vehicles v
                  USING DUAL ON (v.PROVINCE = :province AND v.LICENSE_PLATE = :licensePlate)
@@ -529,7 +583,7 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
 
-            // 3. 获取更新后的通行证信息
+            // 3. Get updated pass information
             const updatedPass = await connection.execute(
                 `SELECT 
                     vp.PASS_ID,
@@ -545,7 +599,7 @@ async function applyVisitorPasses(userId, hours, visitorPlate) {
                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
             );
             
-            // 提交事务
+            // Commit transaction
             await connection.commit();
             
             return { 
@@ -802,16 +856,16 @@ async function getUserViolations(userId, startDate, endDate) {
     });
 }
 
-// 创建停车违规记录 - 管理员界面使用
+// Create parking violation record - for admin interface
 async function createViolation(province, licensePlate, reason, lotId, vehicleId = null) {
     let connection;
     try {
         connection = await oracledb.getConnection(dbConfig);
 
-        // 当前时间作为违规记录创建时间
+        // Use current time as violation record creation time
         const currentTime = new Date();
 
-        // 创建违规记录
+        // Create violation record
         const insertQuery = `
             INSERT INTO Violations (
                 LOT_ID, PROVINCE, LICENSE_PLATE, 
@@ -848,12 +902,12 @@ async function createViolation(province, licensePlate, reason, lotId, vehicleId 
         console.error('Error creating violation:', error);
         return {
             success: false,
-            message: `Database error while creating violation record: ${error.message || '未知错误'}`,
+            message: `Database error while creating violation record: ${error.message || 'Unknown error'}`,
             errorCode: error.errorNum || -1,
             errorDetails: error.toString()
         };
     } finally {
-        // 确保连接始终被关闭，即使发生错误
+        // Ensure connection is always closed, even if an error occurs
         if (connection) {
             try {
                 await connection.close();
@@ -873,7 +927,7 @@ async function createPayment(amount, paymentMethod, cardNumber, userId, lotId, t
         RETURNING PAY_ID INTO :7
     `;
     
-    // 打印参数类型信息以便调试
+    // Print parameter type information for debugging
     console.log('Payment parameters:', {
         amount: { value: amount, type: typeof amount },
         paymentMethod: { value: paymentMethod, type: typeof paymentMethod },
@@ -885,7 +939,7 @@ async function createPayment(amount, paymentMethod, cardNumber, userId, lotId, t
     
     return await withOracleDB(async (connection) => {
         try {
-            // 不使用bindDefs，而是使用简单的参数数组
+            // Don't use bindDefs, use simple parameter array instead
             const result = await connection.execute(
                 query,
                 [
@@ -1038,14 +1092,14 @@ async function getAllParkingLotNames() {
     });
 }
 
-// 新增函数：注册访客信息
+// New function: Register visitor information
 async function registerVisitor(fullName, phone, unitToVisit, region, licensePlate, parkingLotId) {
     return await withOracleDB(async (connection) => {
         try {
-            // 生成一个随机密码（在实际应用中应该让用户设置或使用更安全的方式）
+            // Generate a random password (in a real application, users should set this or use a more secure method)
             const password = Math.random().toString(36).substring(2, 10);
             
-            // 检查电话号码是否已存在
+            // Check if phone number already exists
             const phoneCheck = await connection.execute(
                 `SELECT ID FROM Users WHERE PHONE = :phone`,
                 { phone },
@@ -1055,14 +1109,14 @@ async function registerVisitor(fullName, phone, unitToVisit, region, licensePlat
             if (phoneCheck.rows.length > 0) {
                 return { 
                     success: false, 
-                    message: '该电话号码已经被注册' 
+                    message: 'This phone number is already registered' 
                 };
             }
             
-            // 设置访客主机信息
+            // Set visitor host information
             const hostInformation = `Visiting Unit ${unitToVisit}`;
             
-            // 1. 插入到Users表中
+            // 1. Insert into Users table
             const userResult = await connection.execute(
                 `INSERT INTO Users (
                     PHONE, 
@@ -1089,17 +1143,17 @@ async function registerVisitor(fullName, phone, unitToVisit, region, licensePlat
             );
             
             if (!userResult.outBinds.userId) {
-                return { success: false, message: '创建用户记录失败' };
+                return { success: false, message: 'Failed to create user record' };
             }
             
             const userId = userResult.outBinds.userId;
             
-            // 计算停车结束时间（默认24小时，可以根据需要修改）
+            // Calculate parking end time (default 24 hours, can be modified as needed)
             const parkingUntil = new Date();
-            parkingUntil.setHours(parkingUntil.getHours() + 24); // 添加24小时
+            parkingUntil.setHours(parkingUntil.getHours() + 24); // Add 24 hours
             const parkingUntilStr = parkingUntil.toISOString().replace('T', ' ').substring(0, 19);
             
-            // 2. 插入到Vehicles表中
+            // 2. Insert into Vehicles table
             const vehicleResult = await connection.execute(
                 `INSERT INTO Vehicles (
                     USER_ID, 
@@ -1123,12 +1177,12 @@ async function registerVisitor(fullName, phone, unitToVisit, region, licensePlat
                 }
             );
             
-            // 提交事务
+            // Commit transaction
             await connection.commit();
             
             return {
                 success: true,
-                message: '访客信息已成功记录',
+                message: 'Visitor information recorded successfully',
                 user: {
                     id: userId,
                     name: fullName,
@@ -1143,18 +1197,18 @@ async function registerVisitor(fullName, phone, unitToVisit, region, licensePlat
             
         } catch (error) {
             console.error('Register visitor error:', error);
-            return { success: false, message: '服务器错误，访客注册失败' };
+            return { success: false, message: 'Server error, visitor registration failed' };
         }
     });
 }
 
-// 验证车牌是否有有效的停车许可
+// Verify if a license plate has a valid parking permit
 async function verifyVehicle(plate, region, lotId) {
     let connection;
     try {
         connection = await oracledb.getConnection(dbConfig);
 
-        // 查询车辆是否在数据库中存在且有效期未过
+        // Query whether the vehicle exists in the database and is still valid
         const query = `
             SELECT v.VEHICLE_ID, v.LICENSE_PLATE, v.PROVINCE, v.USER_ID, v.CURRENT_LOT_ID, v.PARKING_UNTIL
             FROM Vehicles v
@@ -1180,7 +1234,7 @@ async function verifyVehicle(plate, region, lotId) {
             };
         }
 
-        // 车辆存在，返回详细信息
+        // Vehicle exists, return detailed information
         const vehicle = {
             id: result.rows[0].VEHICLE_ID,
             licensePlate: result.rows[0].LICENSE_PLATE,
@@ -1197,15 +1251,15 @@ async function verifyVehicle(plate, region, lotId) {
         };
     } catch (error) {
         console.error('Error verifying vehicle:', error);
-        // 返回更具体的错误信息
+        // Return more specific error information
         return {
             success: false,
-            message: `Database error while verifying vehicle: ${error.message || '未知错误'}`,
+            message: `Database error while verifying vehicle: ${error.message || 'Unknown error'}`,
             errorCode: error.errorNum || -1,
             errorDetails: error.toString()
         };
     } finally {
-        // 确保连接始终被关闭，即使发生错误
+        // Ensure connection is always closed, even if an error occurs
         if (connection) {
             try {
                 await connection.close();
@@ -1217,7 +1271,7 @@ async function verifyVehicle(plate, region, lotId) {
     }
 }
 
-// 获取所有违规记录，可选按停车场ID和日期范围过滤
+// Get all violation records, optionally filtered by parking lot ID and date range
 async function getAllViolations(lotId, startDate, endDate) {
     let connection;
     try {
@@ -1238,19 +1292,19 @@ async function getAllViolations(lotId, startDate, endDate) {
         
         const params = {};
         
-        // 如果提供了停车场ID，添加过滤条件
+        // If parking lot ID is provided, add filter condition
         if (lotId) {
             query += ` AND v.LOT_ID = :lotId`;
             params.lotId = parseInt(lotId, 10);
         }
         
-        // 如果提供了开始日期，添加过滤条件
+        // If start date is provided, add filter condition
         if (startDate) {
             query += ` AND v.TIME >= TO_TIMESTAMP(:startDate, 'YYYY-MM-DD')`;
             params.startDate = startDate;
         }
         
-        // 如果提供了结束日期，添加过滤条件
+        // If end date is provided, add filter condition
         if (endDate) {
             query += ` AND v.TIME <= TO_TIMESTAMP(:endDate, 'YYYY-MM-DD') + INTERVAL '1' DAY - INTERVAL '1' SECOND`;
             params.endDate = endDate;
@@ -1258,8 +1312,8 @@ async function getAllViolations(lotId, startDate, endDate) {
         
         query += ` ORDER BY v.TIME DESC`;
         
-        console.log("执行查询:", query);
-        console.log("参数:", params);
+        console.log("Executing query:", query);
+        console.log("Parameters:", params);
         
         const result = await connection.execute(
             query,
@@ -1299,7 +1353,7 @@ async function getAllViolations(lotId, startDate, endDate) {
     }
 }
 
-// 获取所有支付记录，可选按日期范围过滤
+// Get all payment records, optionally filtered by date range
 async function getAllPayments(startDate, endDate) {
     let connection;
     try {
@@ -1324,13 +1378,13 @@ async function getAllPayments(startDate, endDate) {
         
         const params = {};
         
-        // 如果提供了开始日期，添加过滤条件
+        // If start date is provided, add filter condition
         if (startDate) {
             query += ` AND p.CREATED_AT >= TO_TIMESTAMP(:startDate, 'YYYY-MM-DD')`;
             params.startDate = startDate;
         }
         
-        // 如果提供了结束日期，添加过滤条件
+        // If end date is provided, add filter condition
         if (endDate) {
             query += ` AND p.CREATED_AT <= TO_TIMESTAMP(:endDate, 'YYYY-MM-DD') + INTERVAL '1' DAY - INTERVAL '1' SECOND`;
             params.endDate = endDate;
@@ -1338,8 +1392,8 @@ async function getAllPayments(startDate, endDate) {
         
         query += ` ORDER BY p.CREATED_AT DESC`;
         
-        console.log("执行查询:", query);
-        console.log("参数:", params);
+        console.log("Executing query:", query);
+        console.log("Parameters:", params);
         
         const result = await connection.execute(
             query,
@@ -1349,9 +1403,9 @@ async function getAllPayments(startDate, endDate) {
         
         console.log(`Found ${result.rows.length} payment records`);
         
-        // 处理数据，掩盖信用卡号码中间位数
+        // Process data, mask middle digits of credit card numbers
         const payments = result.rows.map(row => {
-            // 如果有信用卡号码，只显示最后4位
+            // If there's a credit card number, only show the last 4 digits
             if (row.CARDNUMBER) {
                 const length = row.CARDNUMBER.length;
                 if (length > 4) {
@@ -1395,11 +1449,11 @@ async function getAllPayments(startDate, endDate) {
     }
 }
 
-// 更新违规记录状态
+// Update violation record status
 async function updateViolationStatus(ticketId, newStatus) {
     let connection;
     try {
-        // 验证状态值
+        // Validate status value
         const validStatuses = ['pending', 'paid', 'appealed'];
         if (!validStatuses.includes(newStatus)) {
             return {
@@ -1454,7 +1508,7 @@ async function updateViolationStatus(ticketId, newStatus) {
     }
 }
 
-// 通过车牌号和区域查找违规记录
+// Find violations by license plate and region
 async function findViolationsByPlate(licensePlate, province) {
     let connection;
     try {
@@ -1484,7 +1538,7 @@ async function findViolationsByPlate(licensePlate, province) {
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
         
-        // 格式化响应
+        // Format response
         return {
             success: true,
             violations: result.rows
@@ -1507,7 +1561,7 @@ async function findViolationsByPlate(licensePlate, province) {
     }
 }
 
-// 根据ID查找单个违规记录
+// Find single violation record by ID
 async function getViolationById(ticketId) {
     let connection;
     try {
@@ -1541,7 +1595,7 @@ async function getViolationById(ticketId) {
             };
         }
 
-        // 格式化响应
+        // Format response
         return {
             success: true,
             violation: result.rows[0]
@@ -1564,7 +1618,7 @@ async function getViolationById(ticketId) {
     }
 }
 
-// 查询指定停车场的活跃车辆（有效期内的车辆）
+// Query active vehicles (vehicles within valid period) for a specific parking lot
 async function getActiveVehiclesByLotId(lotId) {
     const query = `
         SELECT 
@@ -1635,7 +1689,7 @@ async function getActiveVehiclesByLotId(lotId) {
     });
 }
 
-// 获取所有车辆
+// Get all vehicles
 async function getAllVehicles() {
     return await withOracleDB(async (connection) => {
         try {
@@ -1716,5 +1770,6 @@ module.exports = {
     getActiveVehiclesByLotId,
     getAllPayments,
     deleteVehicle,
-    getAllVehicles
+    getAllVehicles,
+    initializeDatabase
 };

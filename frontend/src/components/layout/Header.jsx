@@ -8,7 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const Header = () => {
   const { user } = useAuth();
 
-  // 根据用户角色获取dashboard路径
+  // Get dashboard path based on user role
   const getDashboardPath = (role) => {
     switch (role) {
       case 'admin':
